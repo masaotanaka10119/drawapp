@@ -1,0 +1,3030 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>３画面レイアウト（Flexbox版）</title>
+    <style>
+        body {
+            /* ページ全体をFlexコンテナにする */
+            display: flex;
+            /* パネル間の隙間を設定 */
+            gap: 1%;
+            /* ページの最低限の高さをビューポートの98%に設定 */
+            min-height: 98vh;
+            /* ページ全体の余白 */
+            margin: 1%;
+            /* フォントを指定 */
+            font-family: sans-serif;
+        }
+
+        .panel {
+            /* パネル共通のスタイル */
+            flex: 0.5; /* 利用可能なスペースを均等に分割 */
+            border: 1px solid #ccc;
+            padding: 1%;
+            box-sizing: border-box; /* パディングとボーダーを幅に含める */
+            overflow: auto; /* 内容がはみ出たら縦スクロールバーを表示 */
+            background-color: #f0f0f0;
+        }
+
+        /* 画像パネルは他の2つのパネルの2倍の幅にする */
+        .image-panel {
+            flex: 2;
+        }
+
+        #imageCanvas {
+            width: 100%;
+            height: auto;
+            border: 1px solid #ccc; /* 枠線を追加して見やすくします */
+        }
+
+        /* 真ん中のパネルをFlexコンテナにする */
+        #middle-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 右パネルをFlexコンテナにする */
+        #right-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* テーブルコンテナのスタイル */
+        .table-container {
+            flex-grow: 1; 
+            overflow: auto;
+        }
+
+        /* inputdataTableを囲むdivに適用するスタイル */
+        #input-table-container {
+            overflow: auto; /* 横スクロールを可能にする */
+        }
+
+        table {
+            /* ★テーブルのレイアウトを自動調整に設定 */
+            table-layout: auto;
+            border-collapse: collapse; /* セルの境界線を結合 */
+            margin-bottom: 1vh; /* テーブルの下の余白 */
+            font-size: 1.5vh; /* テーブル内のフォントサイズ */
+        }
+        
+        th, td {
+            /* ★セルの幅を文字の長さに合わせ、改行しないようにする */
+            white-space: nowrap;
+            border: 1px solid #ddd; /* セルの枠線 */
+            padding: 0.5vh; /* セル内の余白 */
+            text-align: left; /* テキストを左寄せ */
+        }
+        
+        button {
+            width: 98%; /* ボタンの幅 */
+            padding: 1vh; /* ボタン内の余白 */
+            margin-bottom: 0.5vh; /* ボタンの下の余白 */
+            font-size: 1.5vh; /* ボタンのフォントサイズ */
+            box-sizing: border-box; /* パディングを幅に含める */
+        }
+        
+        .selected {
+            background-color: yellow; /* 選択された行の背景色 */
+        }
+        
+        input[type="text"] {
+            width: 95%; /* テキスト入力欄の幅 */
+            padding: 0.3vh; /* テキスト入力欄内の余白 */
+            font-size: 1.5vh; /* テキスト入力欄のフォントサイズ */
+            box-sizing: border-box; /* パディングを幅に含める */
+        }
+        
+        /* ---------------------------------------------------*/
+        /*印刷時専用スタイル (単一ファイル管理用)*/
+        /* --------------------------------------------------- */
+
+        /*@media print { ... } の中のスタイルは、ユーザーがブラウザで印刷を実行したり、*/
+        /*印刷プレビューを開いたりしたとき（つまり、出力メディアが「紙」になったとき）にだけ有効になる*/
+        @media print {
+            /* 1. 不要なUI要素（中央パネルと右パネル全体）を非表示にする */
+            #middle-panel,
+            #right-panel,
+            h2, 
+            #image-upload,
+            #addRowBtn,
+            #extractionBtn,
+            #extractedDataRegisterButton,
+            #printBtn,
+            #deleteDatabaseRowBtn,
+            #sortDatabaseBtn,
+            #duplicateDeleteButton,
+            #copyDatabaseBtn,
+            #pasteDatabaseBtn,
+            #saveDatabaseBtn,
+            #input-table-container,
+            p,
+            /* 【★追加】印刷設定関連のボタンを追加 */
+            #addPrintSettingRowBtn,
+            #deletePrintSettingRowBtn,
+            #savePrintSettingBtn,
+            #copyPrintSettingBtn,
+            #pastePrintSettingBtn,
+            #printScaleBtn,
+            /* 【★追加・修正】抽出データテーブルとそのコンテナも非表示にする */
+            .table-container, /* 抽出データとデータベースのコンテナを非表示 */
+            #extracteddataTable /* テーブル自体も念のため非表示 */
+
+            /*この書き方（セレクタリストの後に{ルール}が続く）は、CSSの最も基本的な記述形式であり、*/
+            /*特定のHTML要素にスタイルを適用する際の標準的な方法*/
+            /*display: none　は　すべての参照要素を完全に非表示にし、その要素が占めていたスペースも消す*/
+            /*!important　は　display: noneというこのルールを、*/
+            /*他のすべてのスタイル設定（画面表示用のCSSなど）よりも最優先で適用するように強制する*/
+            {
+                display: none !important;
+            }
+            
+            /* 2. 画像コンテナ（#left-panel）のみを表示（変更なし） */
+            /*画面設定のdisplay: flexを解除し、Webページの最も基本となる表示形式（ブロック要素）に戻す*/
+            body {
+                display: block !important;
+                /* ★修正：ブラウザの既定の印刷余白を強制的にゼロにする */
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            #left-panel {
+                width: 100% !important;/* 画像パネルの幅を印刷用紙いっぱいに広げる */
+                flex: none !important;/* Flexboxの割合指定を解除 */
+                padding: 0 !important;/* パネルの内側の余白を削除 */
+                border: none !important;/* パネルの枠線を削除 */
+                margin: 0 !important;/* パネルの外側の余白を削除 */
+                box-shadow: none;/* 影を削除 */
+                overflow: visible; /* スクロールバーを非表示 */
+                background-color: white; /* 背景色を白にして、インク消費を抑える */
+            }
+            
+            /* 3. 画像（Canvas）の調整（変更なし） */
+            #imageCanvas {
+                width: 100%; /* Canvasの幅を親要素（#left-panel）の幅（用紙の幅）に合わせて広げる */
+                height: auto;/* 高さを自動調整し、画像の縦横比が崩れないようにする */
+                margin-bottom: 0 !important; /* 余白も消す */
+                /* ★追加：Canvas自体の枠線を非表示にする */
+                border: none !important;
+            }
+            
+            /* 4. テーブル関連の印刷スタイルは不要になったため、削除しても構いません */
+            /* ただし、ここでは削除せず、上記1で非表示にします */
+        }
+
+    </style>
+</head>
+<body>
+    <!--行の挿入用のテンプレート---------------------------------------------------------------------->
+    <template id="datatable-row-template">
+        <tr>
+            <td><input type="date" class="data-date"></td>
+            <td><input type="text" id="documentNameInput" class="data-document-name" value="" placeholder="ファイル名自動入力" readonly></td>
+            <td><input type="text" class="data-item-name"></td>
+            <td><input type="text" class="text-input" value=""></td>
+            <td><input type="number" class="font-size" value="12" min="1"></td>
+            <td>
+                <select class="line-style">
+                    <option>実線</option>
+                    <option>点線</option>
+                </select>
+            </td>
+            <td><input type="number" class="line-width"></td>
+            <td><input type="color" class="line-color"></td>
+            <!--classを付けることで、coord-inputというクラスが付いた要素を全部探す指示ができる-->
+            <!--data-*はclass や id とは別に、JavaScriptが操作したい要素を特定するための目印として使われる-->
+            <!--data-*はidと違い一意ではない目印-->
+            <!--classは「同じグループの要素をすべて見つける」-->
+            <!--data-は「その要素が持つ固有のデータ」を保存するために使う-->
+            <td><input type="number" class="coord-input" data-coord="x1" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y1" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x2" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y2" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x3" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y3" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x4" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y4" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x5" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y5" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x6" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y6" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x7" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y7" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x8" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y8" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x9" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y9" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x10" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y10" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x11" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y11" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x12" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y12" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x13" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y13" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x14" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y14" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x15" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y15" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x16" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y16" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x17" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y17" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x18" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y18" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x19" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y19" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="x20" readonly></td>
+            <td><input type="number" class="coord-input" data-coord="y20" readonly></td>
+        </tr>
+    </template>
+
+
+    <!--★印刷データのテーブル専用★行の挿入用のテンプレート--------------------------------------->
+    <template id="printSettingRowTemplate">
+        <tr>
+            <td><input type="text" class="print-document-name" value=""></td>
+            <td><input type="text" class="print-pattern-name"" value=""></td>
+            <td><input type="number" class="print-scale-x" value="1" min="0"></td>
+            <td><input type="number" class="print-scale-y" value="1" min="0"></td>
+        </tr>
+    </template>
+
+
+    <div id="left-panel" class="panel image-panel">
+        <h2>画像表示</h2>
+        <canvas id="imageCanvas"></canvas>
+    </div>
+    <div id="middle-panel" class="panel">
+        <h2>編集パネル</h2>
+        <div>
+            <label for="image-upload">画像を選択:</label>
+            <!--inputタグは、ボタン、テキストボックス、チェックボックスなど）を作るためのタグ。
+                type属性は、<input>タグがどんな種類の部品になるかを決める
+                ここではtype="file"と指定することで、ブラウザは「コンピューターやスマートフォンからファイルを選択するためのボタン」として表示
+                accept属性は、ユーザーがファイルを選択する際に、どんな種類のファイルを受け付けるかを指定。
+                image/*：これは「すべての画像ファイル」という意味です。*は「何でも」を意味するので、image/jpeg、image/png、image/gifなど
+                type、id、acceptといったHTMLでは、タグ内の属性はどの順で書いてもいい-->
+            <input type="file" id="image-upload" accept="image/*">
+        </div>
+        
+        <p> 入力データ</p>
+        <div id="input-table-container">
+            <table id="inputdataTable">
+                <thead>
+                <tr>
+                <th>日付</th>
+                <th>書類名</th>
+                <th>項目名</th>
+                <th>入力文字</th>
+                <th>文字サイズ</th>
+                <th>線種</th>
+                <th>線の太さ</th>
+                <th>線の色</th>
+                <th>表示X1</th>
+                <th>表示Y1</th>
+                <th>表示X2</th>
+                <th>表示Y2</th>
+                <th>表示X3</th>
+                <th>表示Y3</th>
+                <th>表示X4</th>
+                <th>表示Y4</th>
+                <th>表示X5</th>
+                <th>表示Y5</th>
+                <th>表示X6</th>
+                <th>表示Y6</th>
+                <th>表示X7</th>
+                <th>表示Y7</th>
+                <th>表示X8</th>
+                <th>表示Y8</th>
+                <th>表示X9</th>
+                <th>表示Y9</th>
+                <th>表示X10</th>
+                <th>表示Y10</th>
+                <th>表示X11</th>
+                <th>表示Y11</th>
+                <th>表示X12</th>
+                <th>表示Y12</th>
+                <th>表示X13</th>
+                <th>表示Y13</th>
+                <th>表示X14</th>
+                <th>表示Y14</th>
+                <th>表示X15</th>
+                <th>表示Y15</th>
+                <th>表示X16</th>
+                <th>表示Y16</th>
+                <th>表示X17</th>
+                <th>表示Y17</th>
+                <th>表示X18</th>
+                <th>表示Y18</th>
+                <th>表示X19</th>
+                <th>表示Y19</th>
+                <th>表示X20</th>
+                <th>表示Y20</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+        </tbody>
+        
+        </table>
+        </div>
+
+        <div>
+            <button id="addRowBtn">データベースへ追加</button>
+        </div>
+
+        <p> 抽出データ</p>
+        <div class="table-container">
+            <table id="extracteddataTable">
+                <thead>
+                <tr>
+                <th>日付</th>
+                <th>書類名</th>
+                <th>項目名</th>
+                <th>入力文字</th>
+                <th>文字サイズ</th>
+                <th>線種</th>
+                <th>線の太さ</th>
+                <th>線の色</th>
+                <th>表示X1</th>
+                <th>表示Y1</th>
+                <th>表示X2</th>
+                <th>表示Y2</th>
+                <th>表示X3</th>
+                <th>表示Y3</th>
+                <th>表示X4</th>
+                <th>表示Y4</th>
+                <th>表示X5</th>
+                <th>表示Y5</th>
+                <th>表示X6</th>
+                <th>表示Y6</th>
+                <th>表示X7</th>
+                <th>表示Y7</th>
+                <th>表示X8</th>
+                <th>表示Y8</th>
+                <th>表示X9</th>
+                <th>表示Y9</th>
+                <th>表示X10</th>
+                <th>表示Y10</th>
+                <th>表示X11</th>
+                <th>表示Y11</th>
+                <th>表示X12</th>
+                <th>表示Y12</th>
+                <th>表示X13</th>
+                <th>表示Y13</th>
+                <th>表示X14</th>
+                <th>表示Y14</th>
+                <th>表示X15</th>
+                <th>表示Y15</th>
+                <th>表示X16</th>
+                <th>表示Y16</th>
+                <th>表示X17</th>
+                <th>表示Y17</th>
+                <th>表示X18</th>
+                <th>表示Y18</th>
+                <th>表示X19</th>
+                <th>表示Y19</th>
+                <th>表示X20</th>
+                <th>表示Y20</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>    
+        </table>
+        </div>
+
+        <div>
+            <button id="extractionBtn">データ抽出</button>
+            <button id="extractedDataRegisterButton">抽出データ登録</button>
+            <button id="printBtn">画像印刷</button>
+        </div>
+
+        <div class="table-container">
+            <table id="printSettingDataTable">
+                <thead>
+                    <tr>
+                    <th>印刷書類名</th>
+                    <th>印刷状況</th>
+                    <th>X軸の補正倍率</th>
+                    <th>Y軸の補正倍率</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+            
+        </div>
+
+        <div>
+            <button id="addPrintSettingRowBtn">印刷設定データ行追加</button>
+            <button id="deletePrintSettingRowBtn">印刷設定データ選択行削除</button>
+            <button id="savePrintSettingBtn">印刷設定データ保存</button>
+            <button id="copyPrintSettingBtn">印刷設定データコピー</button>
+            <button id="pastePrintSettingBtn">印刷設定データ貼り付け</button>
+            <button id="printScaleBtn">設定適応印刷</button>
+        </div>
+
+    </div>
+
+    <div id="right-panel" class="panel">
+        <h2>データベース</h2>
+        <div class="table-container">
+        <table id="databaseTable">
+        <thead>
+            <tr>
+                <th>日付</th>
+                <th>書類名</th>
+                <th>項目名</th>
+                <th>入力文字</th>
+                <th>文字サイズ</th>
+                <th>線種</th>
+                <th>線の太さ</th>
+                <th>線の色</th>
+                <th>表示X1</th>
+                <th>表示Y1</th>
+                <th>表示X2</th>
+                <th>表示Y2</th>
+                <th>表示X3</th>
+                <th>表示Y3</th>
+                <th>表示X4</th>
+                <th>表示Y4</th>
+                <th>表示X5</th>
+                <th>表示Y5</th>
+                <th>表示X6</th>
+                <th>表示Y6</th>
+                <th>表示X7</th>
+                <th>表示Y7</th>
+                <th>表示X8</th>
+                <th>表示Y8</th>
+                <th>表示X9</th>
+                <th>表示Y9</th>
+                <th>表示X10</th>
+                <th>表示Y10</th>
+                <th>表示X11</th>
+                <th>表示Y11</th>
+                <th>表示X12</th>
+                <th>表示Y12</th>
+                <th>表示X13</th>
+                <th>表示Y13</th>
+                <th>表示X14</th>
+                <th>表示Y14</th>
+                <th>表示X15</th>
+                <th>表示Y15</th>
+                <th>表示X16</th>
+                <th>表示Y16</th>
+                <th>表示X17</th>
+                <th>表示Y17</th>
+                <th>表示X18</th>
+                <th>表示Y18</th>
+                <th>表示X19</th>
+                <th>表示Y19</th>
+                <th>表示X20</th>
+                <th>表示Y20</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>    
+        </table>
+        <button id="deleteDatabaseRowBtn">選択行削除</button>
+        <button id="sortDatabaseBtn">昇順に並び替え</button>
+        <button id="duplicateDeleteButton">重複データ削除</button>
+        <button id="copyDatabaseBtn">データコピー</button>
+        <button id="pasteDatabaseBtn">データ貼り付け</button>
+        <button id="saveDatabaseBtn">データ保存</button>
+        </div>
+
+    </div> 
+<script>
+    // DOMContentLoaded: HTMLの読み込みが完了したらスクリプトを実行
+    document.addEventListener('DOMContentLoaded', () => {
+
+        //要素の取得
+        //データベーステーブルと追加ボタンを取得
+        const databaseTableBody = document.querySelector('#databaseTable tbody');
+        //tbodyを取得、中身はテンプレートと関数で入れる
+        const inputdataTableBody = document.querySelector('#inputdataTable tbody');
+        const addRowBtn = document.getElementById('addRowBtn');
+        const extracteddataTableBody = document.querySelector('#extracteddataTable tbody');
+        const extractionBtn = document.getElementById('extractionBtn');
+        const extractedDataRegisterButton = document.getElementById('extractedDataRegisterButton');
+        const printBtn = document.getElementById('printBtn');
+
+        //★印刷データのテーブル、各ボタン取得
+        const printSettingDataTable = document.getElementById('printSettingDataTable');
+        const addPrintSettingRowBtn = document.getElementById('addPrintSettingRowBtn');
+        const deletePrintSettingRowBtn = document.getElementById('deletePrintSettingRowBtn');
+        const savePrintSettingBtn = document.getElementById('savePrintSettingBtn');
+        const copyPrintSettingBtn = document.getElementById('copyPrintSettingBtn');
+        const pastePrintSettingBtn = document.getElementById('pastePrintSettingBtn');
+        const printScaleBtn = document.getElementById('printScaleBtn');
+
+        const extracteddataTable = document.getElementById('extracteddataTable');
+        const databaseTable = document.getElementById('databaseTable');
+
+        const deleteDatabaseRowBtn = document.getElementById('deleteDatabaseRowBtn');
+        const sortDatabaseBtn = document.getElementById('sortDatabaseBtn');
+        const duplicateDeleteButton = document.getElementById('duplicateDeleteButton');
+        const copyDatabaseBtn = document.getElementById('copyDatabaseBtn');
+        const pasteDatabaseBtn = document.getElementById('pasteDatabaseBtn');
+        const saveDatabaseBtn = document.getElementById('saveDatabaseBtn');
+
+        // ★テンプレートを取得
+        const datatableRowTemplate = document.getElementById('datatable-row-template');
+        //★印刷データテーブル専用のテンプレートを取得
+        const printSettingRowTemplate = document.getElementById('printSettingRowTemplate');
+
+        // ★画像処理関連の要素を取得
+        const imageUpload = document.getElementById('image-upload');
+        const imageCanvas = document.getElementById('imageCanvas');
+        const ctx = imageCanvas.getContext('2d');
+        
+        // ★★★ 画像オブジェクトを保持するための変数 ★★★
+        //変数名のcurrentは現在のという意味で現在活性化されている画像を格納する用の変数なので
+        //変数名はcurrentImageとした
+        let currentImage = null;
+        
+        // アプリケーション全体でファイル名を保持するための変数
+        //入力行のデータをデータベースに登録する際に、書類名のセルに画像ファイル名を入力するために使う
+        let currentFileName = '';
+
+        // ★修正：グローバル（DOMContentLoadedスコープ）で定義が必要な変数を追加
+        // lineDataForTemp は mousedown で初期化され、mousemove/mouseup で参照されるため
+        let lineDataForTemp = null; 
+
+        //マウスダウン中かどうか
+        let isDrawing = false; 
+        //仮の線の始点座標 {x, y}
+        let tempLineStartPoint = null;
+        //マウスムーブ中の座標 {x, y}
+        let tempLineCurrentPoint = null;
+
+        // ★初期化：アプリケーション起動時に入力データテーブルに空の行を1つ追加
+        //createRowFromTemplate()で行を作り、appendChild()で作った行を追加
+        inputdataTableBody.appendChild(createRowFromTemplate());
+
+        
+        // 各テーブルのtbodyにクリックイベントリスナーを設定（行選択のため）---------------------------------
+        //念のためif文で要素の存在をチェック
+        if (databaseTable) {
+            databaseTable.addEventListener('click', handleTableRowClick);
+        }
+        if (extracteddataTable) {
+            extracteddataTable.addEventListener('click', handleTableRowClick);
+        }
+        //★クリックした行を選択状態にする処理は印刷データのテーブルでも使えるので、
+        // 　印刷データのテーブルにもクリックイベントリスナーを設定する
+        if (printSettingDataTable) {
+            printSettingDataTable.addEventListener('click', handleTableRowClick);
+        }
+
+
+        // ★テンプレートから行を作成する関数(この関数は実際にテーブルに挿入まではしない)---------------------------
+        // 役割：<template>タグの内容を複製し、新しい行（<tr>要素）を返す
+        function createRowFromTemplate() {
+            // template要素の内容を複製し、<tr>要素を取得
+            // cloneNode(true)で中身（<td>や<input>）も全て複製
+
+            //datatableRowTemplate の .content プロパティ（非表示の中身）を取得し、
+            // 中身から .querySelector('tr') で探して最初に見つかった行の要素 (<tr>) を取得し、
+            // .cloneNode(true) で、trueとすることで、その行を<tr>のタグだけでなく
+            // すべての子要素（<td>や<input>など）もすべて含めてコピーする
+            return datatableRowTemplate.content.querySelector('tr').cloneNode(true);
+        }
+
+        // ★印刷データテーブル専用のテンプレートから行を作成し、印刷データテーブルに追加まで行う関数----------------
+        // 役割：<template>タグの内容を複製し、新しい行（<tr>要素）を返す
+        //この関数で作った行の挿入は印刷データテーブルの行追加ボタンのイベントリスナーで行う
+        function addPrintSettingRowFromTemplate() {
+
+            //印刷データテーブル専用のテンプレートから行を作成し、変数に格納
+            const newRow = printSettingRowTemplate.content.querySelector('tr').cloneNode(true);
+
+            //作成した行要素を呼び出し元に返す
+            return newRow;
+        }
+
+
+        // ★指定した行の入力値を別の行にコピーする関数（重複処理の関数化）-----------------------------------
+        //createRowFromTemplate内で使用された cloneNode(true) がコピーしない、
+        // ユーザーが入力した情報（.value）を補完してコピーする
+        // 役割：フォーム要素（<input>, <select>）の .value を、複製元の行から複製先の行へ手動でコピーする
+        //第一引数(コピー元の行)、第二引数(コピー先の行)としている
+        function copyRowValues(sourceRow, destinationRow) {
+            // 元の行にあるすべての入力欄(<input>と<select>)要素を順番通りに探して取得し、リストにする
+            const sourceFields = sourceRow.querySelectorAll('input, select');
+            // 複製された行の中にあるすべての入力欄(<input>と<select>)要素を順番通りに探して取得し、リストにする
+            const destinationFields = destinationRow.querySelectorAll('input, select');
+
+            // forEachループを使って、元の入力欄の値を新しい入力欄にコピー
+            // .forEach（第一引数(一つずつ取り出された要素),　第二引数(要素のIndex) ）
+            //fieldとindexは、.forEachメソッドが、コールバック関数に渡す引数
+            sourceFields.forEach((field, index) => {
+                // cloneNode(true)だけではコピーされない .value の値を手動でコピー
+                //destinationFields[index].value = sourceFields[index].value;と書いても動く
+                destinationFields[index].value = field.value;
+            });
+        }
+        
+
+        // ★指定したテーブルの全ての行データを別のテーブルにコピー追加する関数----------------------------------
+        // 役割：コピー元のテーブルの全行を読み込み、新しい行としてコピー先のテーブルに追加する
+        // @param {HTMLTableElement} sourceTable - コピー元の<table>要素 (例: extracteddataTable)
+        // @param {HTMLTableElement} destinationTable - コピー先の<table>要素 (例: databaseTable)
+        // @param {HTMLTemplateElement} rowTemplate - 行作成に使用するテンプレート要素 (datatableRowTemplate)
+        function copyAllRowsBetweenTables(sourceTable, destinationTable, rowTemplate) {
+            // コピー元テーブルの tbody を取得
+            const sourceTbody = sourceTable.querySelector('tbody');
+            // コピー先テーブルの tbody を取得
+            const destinationTbody = destinationTable.querySelector('tbody');
+            //テーブルの存在チェック
+            if (!sourceTbody || !destinationTbody) {
+                console.error("コピー元またはコピー先のテーブルの tbody が見つかりません。");
+                return;
+            }
+            // コピー元テーブルの全行 (<tr>) を取得
+            // querySelectorAllの結果はNodeListなので、Array.fromで配列に変換してforEachを使う
+            const sourceRows = Array.from(sourceTbody.querySelectorAll('tr'));
+            
+            //配列に変換したコピー元テーブルの全行内を繰り返し処理
+            sourceRows.forEach(sourceRow => {
+                // 1. テンプレートを使って新しい行を作成 (DOMの要素構造のみをコピー)
+                // 既存の createRowFromTemplate() 関数を再利用するため、
+                // 一時的にテンプレート要素の内容を複製し、新しい行を作成
+                const newRow = rowTemplate.content.querySelector('tr').cloneNode(true);
+
+                // 2. コピー元の行から新しい行に入力値 (.value) をコピー
+                // 既存の copyRowValues(sourceRow, destinationRow) 関数を呼び出す
+                copyRowValues(sourceRow, newRow);
+
+                // 3. 新しい行をコピー先テーブルに追加
+                destinationTbody.appendChild(newRow);
+            });
+
+            console.log(`[${sourceTable.id}] から [${destinationTable.id}] へ ${sourceRows.length} 行のデータをコピーしました。`);
+        }
+
+
+        //行をクリアする関数-------------------------------------------------------------------------------
+        //役割：★入力テーブルのすべての入力値を空にするために使う
+        //変更理由：データの追加後に次の入力をしやすいようにするため
+        //rowには、クリアしたいテーブルの行（<tr>要素）が渡される
+        function clearRow(row) {
+            //引数として受け取ったrowの中から、inputタグとselectタグをすべて探し出し、inputsというリストに格納
+            const inputs = row.querySelectorAll('input, select');
+
+            //取得した入力要素のリストを一つずつ順番に処理
+            inputs.forEach(input => {
+                //input.typeが'date', 'text', 'number'の場合はvalueを空文字列に
+                if (input.type === 'date' || input.type === 'text' || input.type === 'number') {
+                    input.value = '';
+                } 
+                //input.typeが'color'の場合はvalueを'#000000'にリセット
+                else if (input.type === 'color') {
+                    input.value = '#000000';
+                } 
+                //その他のinput（selectなど）はvalueを空文字列に
+                else {
+                    input.value = '';
+                }
+            });
+        }
+        
+        //テーブルの行をクリックした際の処理（行の選択/複数選択)の関数------------------------------------------
+        //@param {Event} event - クリックイベントオブジェクト
+        function handleTableRowClick(event) {
+            const row = event.target.closest('tr'); // クリックされた要素から最も近い<tr>要素を取得
+            // ★★★ フォーム要素でのクリックを無視する処理 ★★★
+            if (!row || event.target.matches('input, select, button')) return; 
+            
+            // Ctrlキー（Windows）またはCommandキー（Mac）が押されている場合
+            if (event.ctrlKey || event.metaKey) {
+                row.classList.toggle('selected'); // 選択状態を切り替える
+                } else { // Ctrl/Commandキーが押されていない場合（単一選択モード）
+                // クリックされた行以外のすべての選択状態を解除
+                document.querySelectorAll('.selected').forEach(selectedRow => {
+                    if (selectedRow !== row) {
+                        selectedRow.classList.remove('selected');
+                    }
+                });
+                row.classList.toggle('selected'); // クリックされた行の選択状態を切り替える
+                }
+        }
+
+        
+        //指定されたテーブルから選択されている行を全て削除する関数------------------------------------------
+        //@param {HTMLElement} tableBody - 操作対象のテーブルの<tbody>要素
+        function deleteSelectedRowsFromTable(tableBody) {
+            const selectedRows = tableBody.querySelectorAll('.selected'); // 選択されている全ての行を取得
+            
+            // 取得した行を逆順にループして削除（順方向だとインデックスがずれるため）
+            for (let i = selectedRows.length - 1; i >= 0; i--) {
+                const row = selectedRows[i];
+                // 親要素から行を削除
+                row.parentNode.removeChild(row);
+            }
+            
+            // 削除後に残っているかもしれない選択状態のクラスを確実にクリア
+            document.querySelectorAll('.selected').forEach(row => {
+                row.classList.remove('selected');
+            });
+
+        }
+        
+
+        //データテーブルの行を、指定された優先順位で並び替えて再描画する関数-------------------------------
+        // 優先順位: 1. 日付(降順) → 2. 書類名(昇順) → 3. 項目名(昇順)
+        function sortDataTable(targetTable) {
+            alert('並び替え開始');
+            
+            // null チェック（安全のため）
+            if (!targetTable) {
+                console.error('sortDataTable: ターゲットテーブル要素が null です。処理を中断します。');
+                return;
+            }
+            
+            // targetTable（<table>）から tbody を検索
+            const tbody = targetTable.querySelector('tbody');
+            
+            // tbody が見つからない場合のチェック（安全のため）
+            if (!tbody) {
+                console.error('sortDataTable: テーブル内に <tbody> 要素が見つかりませんでした。');
+                    return;
+            }
+
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            //配列.sort(比較関数) で配列内で引数の比較関数に基づいて、配列のすべての要素が、
+            // 他のすべての要素との比較で正しい相対的な位置に配置されるまで比較と入れ替えが行われる。
+            // ここでは比較関数は無名のアロー関数で書かれている。
+            //(rowA, rowB) => {}この比較関数でいえば、{}内の返り値が正ならばrowAをrowBより後に置き、
+            //負ならば、rowAをrowBのより前に置き、０ならば順序を変えない。
+            //.sort()関数は新しく配列を作るのではなく元の配列を直接並び替えて戻り値として返す。
+            rows.sort((rowA, rowB) => {
+
+                //ここから比較関数の処理内容
+
+                //比較される行rowAとrowBのそれぞれの中の「<input>タグ」または「<select>タグ」の
+                // どちらかに一致するすべての要素を見つけるように指定し、要素を取得
+                const inputA = rowA.querySelectorAll('input, select');
+                const inputB = rowB.querySelectorAll('input, select');
+                
+                // --- 比較キーの抽出---
+                //ここで比較に使う各要素の形式のチェックが無いのは
+                // 入力の仕方はHTMLで決められているし、貼り付けの際もチェックしているから
+
+                //三項演算子  条件 ? 真の場合の値 : 偽の場合の値
+                //日付の要素で説明すると、HTMLの日付の要素は０列目なのでinputA[0]
+                //条件: inputA リストの最初の要素（日付の <input>）が存在するか
+                //真の場合の値: 存在する要素から、その**値（日付の文字列）**を取得
+                //偽の場合の値: 要素が存在しない場合、空の文字列（''）を返す
+                //空を返すのは安全策。プログラムがエラーで停止するのを防ぎ、空の値を比較対象とする。
+                const dateA = inputA[0] ? inputA[0].value : ''; //日付
+                const dateB = inputB[0] ? inputB[0].value : ''; //日付
+                
+                const nameA = inputA[1] ? inputA[1].value : ''; // 書類名
+                const nameB = inputB[1] ? inputB[1].value : ''; // 書類名
+                
+                const itemA = inputA[2] ? inputA[2].value : ''; // 項目名
+                const itemB = inputB[2] ? inputB[2].value : ''; // 項目名
+                
+                // 1. 日付の比較（最優先：新しい順/降順）
+                if (dateA > dateB) return -1;
+                if (dateA < dateB) return 1;
+                
+                // --- 日付が同じだった場合 ---
+                // 2. 書類名の比較（第2キー：昇順/あいうえお順）
+                if (nameA > nameB) return 1;
+                if (nameA < nameB) return -1;
+                
+                // --- 日付と書類名が同じだった場合 ---
+                // 3. 項目名の比較（第3キー：昇順/あいうえお順）
+                if (itemA > itemB) {
+                    return 1;  // AをBより後にする（昇順）
+                }
+                if (itemA < itemB) {
+                    return -1; // AをBより前にする（昇順）
+                }
+                
+                // 4. すべて同じなら順序を変更しない
+                return 0;
+            });
+            
+            // 3. テーブルの表示を並び替え後の順序に更新
+
+            //innerHTML プロパティに空の文字列 ('') を設定することで、
+            // <tbody> の内側にあった既存のすべての行要素（<tr>）が、一度にDOMから削除
+            tbody.innerHTML = '';
+            //並び替えによって正しい順序に並んだ配列 rows を最初から最後まで繰り返し処理し、
+            // 各行（row）をテーブルに追加
+            rows.forEach(row => {
+                tbody.appendChild(row);
+            });
+        }
+
+
+        //-------------重複データ削除の関数-----------------------
+        // 引数で取得したテーブルのデータの中でまったく同じように重複する行データを削除し、テーブルを再構築する関数
+        // 指定されたテーブルからデータを抽出し、重複を排除してから、テーブルの内容をクリアし、
+        // 重複のないデータのみでDOMを再構築する。
+        // * @param {HTMLElement} tableElement - 重複行を削除したい<table>要素（例: databaseTable）
+        // @param {function} getAllTableData - テーブルからデータを抽出する関数
+        // @param {function} createRowFromTemplate - テンプレートから新しい行を作成する関数
+        function deleteDuplicateRowsAndRebuild(tableElement) {
+            // 依存関数の存在チェック
+            if (typeof getAllTableData !== 'function' || typeof createRowFromTemplate !== 'function') {
+                console.error('エラー: 必要な関数 (getAllTableData, createRowFromTemplate) が見つかりません。');
+                alert('テーブル再構築に必要な関数が見つからないため、重複削除を実行できません。');
+                return;
+            }
+            //要素の存在チェック
+            const tbody = tableElement.querySelector('tbody');
+            if (!tbody) {
+                console.error('エラー: <tbody> 要素が見つかりません。');
+                    return;
+            }
+            
+            // 1. 現在のテーブルから全てのデータをオブジェクトの配列として抽出
+            const allTableData = getAllTableData(tableElement);
+            let originalCount = allTableData.length; // 元の行数を保持
+            // 2. データを一意なキー（JSON文字列）に変換して重複を排除
+            
+            //JavaScriptの組み込みオブジェクトである**Set（セット）**を作成
+            //Setは、重複した値を持つことができないという性質があり、
+            // 一度ある値を追加すると、同じ値を再度追加しようとしても無視される
+            //今回の使い方: テーブルの各行データの内容を JSON.stringify() で文字列化したものを
+            // 「キー」としてここに保存し、新しい行のキーをチェックする際に使う
+            //★--Setは、キーと値のペアでデータを格納する通常のオブジェクト（連想配列やマップ）とは異なり、
+            //     単に**「値（今回の場合は文字列キー）」のコレクション**として機能する--★
+            const uniqueKeys = new Set();
+            
+            //空の**配列（Array）**を作成
+            //重複チェックを通過した、重複のない（一意な）行データ（オブジェクト形式）を
+            // 実際のデータとして格納するために使用
+            const uniqueRowsData = [];
+            
+            //作った関数getAllTableData(tableElement)で取得した行データの配列内を繰り返し処理
+            allTableData.forEach(rowData => {
+                // オブジェクトを文字列に変換し、これを一意のキーとして使用
+                //行データを繰り返しで一つずつ文字列に変換して取得
+                const key = JSON.stringify(rowData);
+                
+                //uniqueKeys.has(key)で新しい行のキーが、このSetの値の中に既に存在するか（
+                // つまり重複しているか）をチェックする。
+                //なければfalseなので！があるので、なければifはtrueとなり、実行されるので、
+                //同じキーが無ければキーと配列に値を追加という処理をすることになる
+                if (!uniqueKeys.has(key)) {
+                    // 初めて登場するキーの場合 -> 一意なデータとして記録し、Setにキーを追加
+
+                    //キーの追加、以後同じキーのチェックに使われる
+                    uniqueKeys.add(key);
+                    //配列に実際のデータを格納
+                    uniqueRowsData.push(rowData);
+                }
+            });
+            
+            //何行削除したかの変数。メッセージで表示するのに使う。
+            const deletedCount = originalCount - uniqueRowsData.length;
+            
+            // 3. テーブルのDOMを全クリア
+            // innerHTML = '' により、既存のすべての <tr> 要素が効率的に削除されます。
+            tbody.innerHTML = ''; 
+            
+            // 4. 重複のないデータ配列からDOMを再構築し、挿入
+            uniqueRowsData.forEach(rowData => {
+                // 新しい行（<tr>）をテンプレートから作成
+                const newRow = createRowFromTemplate(); 
+                
+                // 作成した新しい行の入力要素を取得
+                const inputs = newRow.querySelectorAll('input, select');
+                
+                // rowDataオブジェクトのキーを元に、新しい行の入力要素に値を設定
+                // ※このロジックは、getAllTableDataで使われたキー名と、テーブルの列順が一致している前提で動作する。
+
+                // Object.keysの順序は、getAllTableDataでオブジェクトにプロパティが
+                // 追加された順（＝テーブルの列順）が保証されるため、このロジックでOK。
+                // inputs配列（HTML要素の順）とrowDataのキー順が一致している必要がある。
+
+                // rowDataの値を inputs に順番通りに設定するための処理
+                let inputIndex = 0;
+                
+                // rowDataは、getAllTableData内で定義されたキーの順序を保持しているため、
+                // その順序通りに input 要素に値を設定します。
+                //rowData オブジェクトが持っているプロパティ名（例: 'date', 'name', 'item' など）を、
+                // 一つずつ順番に文字列として取り出し、一時的に変数 key に格納。
+                for (const key in rowData) {
+                    //rowData オブジェクトが、プロパティ（キー）を直接持っているか」を確認
+                    if (rowData.hasOwnProperty(key)) {
+                        //列の存在チェック
+                        if (inputs[inputIndex]) {
+                            //rowDataオブジェクトのキーを元に、新しい行の入力要素に値を設定
+                            inputs[inputIndex].value = rowData[key];
+                        }
+                        //inputIndexをインクリメントし、指定する列を進める
+                        inputIndex++;
+                    }
+                }
+                // 完成した行をテーブル本体に追加
+                tbody.appendChild(newRow);
+            });
+            
+            // 5. 結果をユーザーに通知
+            if (deletedCount > 0) {
+                alert(`${deletedCount} 件の完全に一致する重複行を削除し、テーブルを更新しました。`);
+            } else {
+                alert('重複する行は見つかりませんでした。テーブルは更新されました。');
+            }
+        }
+
+
+        //描画データ抽出の関数-------------------------------------------------------------------------
+        //入力行の日付と書類名を基に、データベースから一致するデータを抽出し、抽出テーブルを更新する関数。
+        function performDataExtraction() {
+
+            extracteddataTableBody.innerHTML = ''; // 抽出テーブルをクリア
+
+            //現在のinputdataTableの最初の行（tbody内の<tr>）を取得
+            const inputRow = document.querySelector('#inputdataTable tbody tr');
+
+            //現在のデータベースのすべての行を取得
+            const databaseRows =document.querySelectorAll('#databaseTable tbody tr');
+
+            // 入力行が存在し、かつデータベースの行が1つ以上ある場合のみ処理
+            if (inputRow && databaseRows.length > 0) {
+
+                // 日付のセルを取得
+                const inputDate = inputRow.cells[0].querySelector('input').value.trim();
+                // 書類名のセルを取得
+                const inputDocumentName = inputRow.cells[1].querySelector('input').value.trim();
+
+                for(const databaseRow of databaseRows){ // forEachの代わりにfor...ofを使用
+
+                    //データベースの各行の日付のセルを取得
+                    const databaseCheckDate = databaseRow.cells[0].querySelector('input').value.trim();
+                    //データベースの各行の書類名のセルを取得
+                    const databaseCheckDocumentName = databaseRow.cells[1].querySelector('input').value.trim();
+
+                    if(inputDate === databaseCheckDate && inputDocumentName === databaseCheckDocumentName){
+
+                        // ★テンプレートから新しい行を作成
+                        const newRow = createRowFromTemplate();
+                        
+                        // ★一致した行から新しい行へ、入力値をコピーする関数を実行（処理を関数化して短縮）
+                        copyRowValues(databaseRow, newRow);
+
+                        // 複製して値をコピーしたnewRowを、extracteddataTableBodyの子要素として追加
+                        extracteddataTableBody.appendChild(newRow);
+                    }
+                }
+                // 抽出後の全確定線を再描画
+                redrawAllConfirmedLines();
+
+                return true; // 抽出成功
+            } else {
+                console.log('必要なデータが見つかりません。');
+                return false; // 抽出失敗
+            }
+
+        }
+
+
+        //指定されたHTMLテーブル要素から、全てのセルの値を抽出する関数。保存などの時に使う。-----------------
+        //input/select要素の値、または<td>要素のテキストコンテンツを漏れなく取得します。
+        // * @param {HTMLElement} tableElement - 値を取得したいテーブル要素
+        // （例: document.getElementById('databaseTable')）
+        // @returns {Array<Object>} 各行のデータを含む配列
+        function getAllTableData(tableElement) {
+            //テーブル要素またはその本体 (tbody) があるかチェック
+            if (!tableElement || !tableElement.querySelector('tbody')) {
+                console.error('エラー: 有効なテーブル要素またはその本体 (tbody) が見つかりません。');
+                //エラーの場合、処理を終了し、空の配列 [] を返す
+                return [];
+            }
+            //引数のテーブル要素の中から <tbody> タグを見つけ、その中に含まれるすべての行（<tr>要素）を、
+            // DOMの組み込みプロパティ .rows を使って取得し、rows 定数に代入
+            const rows = tableElement.querySelector('tbody').rows;
+            // 全行のデータを格納する配列
+            const allTableData = [];
+            
+            // 1. 全ての行をループ
+            for (let i = 0; i < rows.length; i++) {
+                //現在のループで処理している行要素（<tr>）を row 定数に代入
+                const row = rows[i];
+                // この行のデータを格納するオブジェクト
+                const rowData = {};
+                //現在の行で処理している列の番号を追跡するためのカウンターを 0 で初期化します。
+                // 静的なセルのキー生成に使用
+                // 列のインデックス（キー生成用)
+                let columnIndex = 0;
+                
+                // 2. その行の全てのセル（<td>）をループ
+                //現在の行 row の中にあるすべてのセル（<td>要素）を、組み込みプロパティ .cells を使って取得
+                const cells = row.cells;
+                //取得したすべてのセル cells に対して、最初のセルから順にループ処理を開始
+                for (let j = 0; j < cells.length; j++) {
+                    //現在のループで処理しているセル要素（<td>）を cell 定数に代入
+                    const cell = cells[j];
+                    //抽出したセルの値を一時的に格納するための変数を宣言
+                    let cellValue;
+
+                    // 3. セルの中に <input> または <select> があるかチェック
+
+                    //セル要素（<td>）の<input> または <select>を検索して変数に格納
+                    const inputElement = cell.querySelector('input, select');
+                    //取得したセル要素（<td>）の <input> または <select> があるかチェック
+                    if (inputElement) {
+                        // a. 入力要素(<input> または <select>)がある場合：その要素の値を優先的に取得
+                        
+                        //入力要素に設定されているクラス名すべてを文字列として取得
+                        const className = inputElement.className;
+                        
+                        // 座標や数値系の値は数値型に変換して取得 (失敗時は0)
+                        //"調べる文字列".includes("検索したい文字列")　は調べる文字列に
+                        // 引数に指定した検索したい文字列が含まれていればtrueなければfalseを返すので
+                        //それを使って数値系の要素かチェック
+                        if (className.includes('coord-input') || className.includes('line-width') || className.includes('font-size')) {
+                            
+                            //0を含む座標も有効に扱いたいので、nullで無効な場合は判断するので
+                            //下記の0を格納するコードはコメントアウトした
+                            //数値系の要素なら数値型に変換して取得 (失敗時は0)
+                            //cellValue = parseFloat(inputElement.value) || 0;
+                            
+                            // 値を数値に変換。変換に失敗した(NaN)場合は null を代入する。
+                            const parsedValue = parseFloat(inputElement.value);
+                            cellValue = isNaN(parsedValue) ? null : parsedValue;
+
+                        } else {
+                            // その他の文字列値を取得
+                            //数値データを示すクラス名でなかった場合、
+                            // 入力値を文字列として取得し、前後の空白を取り除いて cellValue に代入
+                            cellValue = inputElement.value.trim();
+                        }
+                        // データのキーを決定（data-coord属性があればそれを使う、なければクラス名
+                        // それもなければ、列のインデックスに基づいた汎用キーを使用）
+                        const key = inputElement.dataset.coord || className.split(' ')[0] || `column_${columnIndex}`;
+                        //決定したキーと抽出した値（cellValue）を、現在の行のデータオブジェクト rowData に格納
+                        rowData[key] = cellValue;
+                    } else {
+                        // b. 入力要素がない場合：
+                        // セル(<td>)の中に入力要素（<input>, <select>）が見つからなかった場合
+                        //テキストコンテンツを取得（静的なデータ）
+                        //静的なデータとはデータが既に確定しており、ユーザーが入力できないプレーンなテキストや計算結果
+                        //    ※ trim() で前後の空白や改行を削除
+                        //セル要素そのもののテキストコンテンツを cellValue に代入します。
+                        // これにより、行番号や計算結果などの静的なテキストデータを取得でき
+                        cellValue = cell.textContent.trim();
+                        // データのキーを決定（静的テキストの場合、インデックスでキーを生成）
+                        const key = `static_column_${columnIndex}`; 
+                        rowData[key] = cellValue;
+                    }
+                    //現在のセルが静的であろうと入力要素であろうと、列の処理が完了したため、
+                    // 次の列に進むために columnIndex カウンターをインクリメント
+                    columnIndex++;
+                }
+                //現在の行のすべてのセル処理が完了し、データが rowData に格納されたので、
+                // それを全体のデータ配列 allTableData に追加
+                allTableData.push(rowData);
+            }
+            
+            // ★★★ [新規追加] フィルタリング処理：全ての値が空（または0）の行を除外するロジック ★★★
+            // これにより、空の入力行が誤ってデータベースに保存されるのを防ぎます。
+            const filteredData = allTableData.filter(rowData => {
+                // この行に有効なデータが含まれているかを示すフラグ
+                let hasValidData = false;
+                // rowDataの全ての値をループしてチェック
+                for (const key in rowData) {
+                    if (rowData.hasOwnProperty(key)) {
+                        const value = rowData[key];
+                        // 以下の条件のいずれかに当てはまれば、その行は有効なデータと見なす
+                        
+                        // 1. 文字列型で、中身が空ではない（空白のみも不可）
+                        if (typeof value === 'string' && value.trim() !== '') {
+                            hasValidData = true;
+                            break; // 有効なデータが見つかったので、この行のチェックを終了
+                        }
+                        // 2. 数値型で、0ではない
+                        if (typeof value === 'number' && value !== 0) {
+                            hasValidData = true;
+                            break; // 有効なデータが見つかったので、この行のチェックを終了
+                        }
+                    }
+                }
+                // 有効なデータが含まれていれば true を返し、データとして保持する
+                return hasValidData;
+            });
+            //すべての行のループが終了したら、抽出した全データを含む配列 filteredData を関数の結果として返す
+            return filteredData;
+        }
+
+        
+        //★印刷設定データテーブルの現在の内容を抽出し、キー付きオブジェクトの配列として返す関数
+        //印刷設定データテーブル専用のものを作って管理したほうが管理しやすいと判断した。
+        // この関数は、savePrintSetting, loadPrintSetting, copyTableDataToClipboard のデータ元として機能する。
+        // * @param {HTMLElement} tableElement - 印刷設定テーブルの要素 (例: printSettingDataTable)
+        // @returns {Array<Object>} 抽出されたデータ (例: [{docName: 'A', printsituation: 'B', x: 10, y: 20}, ...])
+        function getPrintSettingData(tableElement) {
+            
+            // テーブル要素またはその tbody があるかチェック
+            if (!tableElement || !tableElement.querySelector('tbody')) {
+                console.error('エラー: 有効な印刷設定テーブル要素が見つかりません。');
+                return [];
+            }
+            
+            const printSettingTableBody = tableElement.querySelector('tbody');
+            const data = [];
+            
+            // テーブルの各行をループ処理
+            printSettingTableBody.querySelectorAll('tr').forEach(row => {
+                // 各行の入力要素を取得（このテーブルの構造は固定であると仮定）
+                // 順番は (0)書類名, (1)印刷状況, (2)X, (3)Y
+                const inputs = row.querySelectorAll('input[type="text"], input[type="number"]');
+                
+                if (inputs.length < 4) {
+                    console.warn("警告: 行に必要な入力要素が不足しています。この行はスキップします。", row);
+                    return; // この行の処理をスキップ
+                }
+                
+                // データの抽出: ここでキー名が確定する
+                //dataは行のデータでキー0:値0　～　キー3:値3　のオブジェクトの配列の形でセルのデータを格納
+                //キー0:値0　～　キー3:値3がセルのデータにあたる
+                data.push({
+                    docName: inputs[0].value.trim(),      // 0番目の入力値 (書類名)
+                    printsituation: inputs[1].value.trim(),      // 1番目の入力値 (印刷状況)
+                    scaleFactorX: parseFloat(inputs[2].value) || 0,  // 2番目の入力値 (X軸補正倍率)
+                    scaleFactorY: parseFloat(inputs[3].value) || 0   // 3番目の入力値 (Y軸補正倍率)
+                });
+            });
+            
+            // フィルタリング処理（空の行を除外するロジック）
+            //すべての項目が空欄またはゼロでなければ、その行のデータを保持
+            const filteredData = data.filter(rowData => {
+                // 文字列キー(docName, printsituation)のいずれかに値がある、
+                // または数値キー（x, y）のいずれかが0でない場合に保持
+                return (
+                    rowData.docName !== '' || 
+                    rowData.printsituation !== '' || 
+                    rowData.scaleFactorX !== 0 || 
+                    rowData.scaleFactorY !== 0
+                );
+            });
+            //すべての行のループが終了したら、抽出した全データを含む配列 filteredData を関数の結果として返す
+            return filteredData;
+        }
+
+
+
+        // --- オブジェクト配列をTSV文字列に変換し、クリップボードにコピーする関数 --------------
+        // 指定されたテーブルのデータを取得し、TSV形式でクリップボードにコピーする。
+        // 既存の getAllTableData 関数によって取得されたオブジェクトの配列（行データ）を、
+        // 指定されたキーの順序に従ってタブ区切り（TSV）の文字列に整形する。
+        // * @param {HTMLElement} tableElement - コピーしたいテーブル要素
+        //@param {string[]} headerKeys -ヘッダーとして使用するキーの配列 (テーブルの列順に厳密に一致させる必要がある)
+        async function copyTableDataToClipboard(tableElement, headerKeys) {
+            // あえて外部からキーの配列（headerKeys）を受け取る設計にする理由のコメント:
+            // データをオブジェクトの配列として受け取る場合、Object.keys()でキーを取得しても、
+            // JavaScriptのオブジェクトの特性上、キーの順序（特に数値キーが混在する場合）が保証されない。
+            // そのため、確実にテーブルの列順を再現するために、外部から正しい順序のキーリスト (headerKeys) を受け取る。
+            
+            // 1. 既存の getAllTableData 関数を使ってデータを取得
+            const tableData = getAllTableData(tableElement);
+            
+            if (tableData.length === 0) {
+                alert('コピーするデータがありません。');
+                return;
+            }
+            
+            // 2. データをTSV形式（Tab Separated Values）の文字列に変換
+            // クリップボードに貼り付けた際の見出し（ヘッダー）の文字列、つまりTSVファイルの1行目を作成
+
+            //テーブルの中から<thead> (テーブルヘッダー) の中の最初の <tr> (行) 要素を検索して取得し、
+            // headerRow に格納（この場合は #databaseTable）
+            const headerRow = tableElement.querySelector('thead tr');
+            //最終的なヘッダーテキスト（例：["日付", "書類名", "項目名", ...]）を格納するための配列を初期化
+            let headerTexts = [];
+            //ヘッダー行（thead tr）が正しく見つかったかどうかを確認
+            if (headerRow) {
+                // 全てのヘッダーテキストを配列に格納
+                //headerRow.querySelectorAll('th'): 取得したヘッダー行の中から、すべての <th> (ヘッダーセル) 要素を検索
+                //Array.from(...): querySelectorAll の戻り値（NodeList）を通常のJavaScriptの配列に変換
+                //.map(th => th.textContent.trim()): 配列の各 <th> 要素に対して処理を実行します。
+                //th.textContent でセル内のテキスト（例：「日付」）を取得
+                //.trim() で前後の余分な空白を除去
+                //結果、headerTexts には テーブルの見た目の順番でヘッダー名が格納される
+                headerTexts = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent.trim());
+            } else {
+                // thead が見つからない場合のフォールバック
+                //予期せぬエラーなどでヘッダー行が見つからず、テーブルのHTML (<th>) から、
+                // 日本語のヘッダー行（<thead>）を読み取れなかったり、HTML構造が予期せぬものだったりした場合のために、
+                // 代替案としてデータ抽出のために定義したキーの配列 (headerKeys) をヘッダー行として使用
+                headerTexts = headerKeys;
+            }
+            
+            // ヘッダー行をタブ文字 (\t) で結合
+            let tsvString = headerTexts.join('\t') + '\n'; 
+            
+            //getAllTableData が返した行データ（オブジェクトの配列）を、TSV形式の文字列が格納された配列に変換
+            //.mapで配列のすべての要素に対して、指定された関数（コールバック関数）を
+            // 順番に適用し、その結果から得られた新しい値を要素とする新しい配列を作成
+            //tableDataの行データを順番に処理して新しい配列にする
+            const dataRows = tableData.map(rowData => {
+
+                //tableData(getAllTableDataの戻り値)の行の中のキーと値のペアは正しいが、
+                // そのオブジェクト内でのペアの順番はHTMLの列順と一致する保証がないため
+                //headerKeys の順番通りにキーを取り出すことで、
+                // データが出力される順番のズレ（JavaScriptオブジェクトのキー順序の問題）を防ぐ
+                // 厳密に headerKeys の順番に従って値を取得し、タブで結合する
+                return headerKeys.map(key => {
+
+                    //headerKeys から取り出したキーを使用して、現在の行オブジェクト (rowData) から対応する値を取得
+                    const value = rowData[key];
+                    
+                    // 値がない場合は空文字列を返す
+                    if (value === undefined || value === null) {
+                        return '';
+                    }
+                    
+                    // 値を文字列化し、タブ区切りデータとして返す
+                    // 三項演算子( ① 条件 ) ? ② 真の場合 : ③ 偽の場合
+                    return (typeof value === 'number') ? value : String(value).trim();
+                
+                }).join('\t'); // 各行のデータをタブで結合
+            });
+            
+            // データ行全体を改行文字 (\n) で結合
+            //tsvStringは末尾に('\n')があるので、次は改行されるdataRows.join('\n')とすることで
+            // 分断されていた配列dataRowsの各行の文字列要素を、改行で区切りながら連結する
+            tsvString += dataRows.join('\n');
+            
+            // 3. クリップボードに書き込み
+            try {
+                // 処理が完了するのを待機
+                await navigator.clipboard.writeText(tsvString);
+                alert('テーブルデータをクリップボードにコピーしました！');
+            } catch (err) {
+                // 失敗した場合はこちらにジャンプ
+                console.error('クリップボードへのコピーに失敗しました:', err);
+                alert('クリップボードへのコピーに失敗しました。...');
+            }
+        }
+
+
+        //クリップボードのデータを解析し、指定されたテーブルに行として挿入する関数-----------------------------
+        //クリップボードデータは、テーブルのヘッダー列と同じ順序のタブ区切り（\t）を想定しています。
+        //@param {HTMLTableElement} targetTable - データを貼り付ける対象のテーブル要素（例: inputdataTable）
+        //@param {HTMLTemplateElement} rowTemplate - 新しい行を作成するためのテンプレート要素
+
+        //awaitを使うためにasyncをつける
+        //.readText()は時間がかかるので、この関数内ではawaitのつけられている処理が終わるまで待機して、
+        // 他のイベントの処理は出来る状態で、終われば関数内の次の処理に進む
+        async function pasteDataFromClipboard(targetTable, rowTemplate) {
+            let clipboardText;
+            try {
+                // 1. クリップボードの内容を非同期で取得
+                clipboardText = await navigator.clipboard.readText();
+            } catch (err) {
+                console.error('クリップボードの読み取りに失敗しました:', err);
+                alert('クリップボードからのデータ読み取りに失敗しました。ブラウザのセキュリティ設定、または権限を確認してください。');
+                return;
+            }
+            if (!clipboardText) {
+                return; // データがない場合は何もしない
+            }
+            // 2. データを解析（行と列に分解）
+            // 行の分割: 改行文字 \n で分割し、空行を除外
+            //trim() メソッドは、文字列の先頭と末尾にある空白文字を削除するので、
+            // 文字列の先頭や末尾にないタブ文字は trim() では削除されない
+            //split('\t') は、文字列を分割した結果として自動的に配列を返すメソッド
+            //ここで行ごとに区切られた('\n')を含まない配列にする
+            const rows = clipboardText.trim().split('\n').filter(r => r.trim() !== '');
+
+            //クリップボードの行データの配列を繰り返し処理
+            rows.forEach(rowData => {
+                // 列の分割: タブ文字 \t で分割
+                //split('\t') は、文字列を分割した結果として自動的に配列を返すメソッド
+                //ここで列ごとに区切られた('\t')を含まない配列にする
+                const columns = rowData.split('\t');
+                
+                // 3. テンプレートをクローンし、新しい行を作成
+                const newRow = rowTemplate.content.cloneNode(true).querySelector('tr');
+                
+                // 4. 新しい行内の全ての入力要素（<input>と<select>）を取得
+                const inputs = newRow.querySelectorAll('input, select');
+                
+                //繰り返しで順に列を取得する用の変数
+                let columnIndex = 0; // クリップボードデータの列インデックス
+                
+                // 5. 新しい行の入力要素に、対応するデータを設定
+
+                //クリップボードの列数がテーブルの列数より多い場合
+                // inputs.forEach の回数が全てなので、その回数を超える columnIndex の処理は発生しない
+                inputs.forEach(input => {
+                    // クリップボードのデータが足りなければ処理をスキップ
+                    //クリップボードにデータがないにもかかわらず、残りの入力要素に対して
+                    // 貼り付け処理を試行するのを避けるための安全策
+                    if (columnIndex >= columns.length) {
+                        return; 
+                    }
+                    
+                    //インデックス0の列から順に要素(値)を変数を取得して格納
+                    const cellValue = columns[columnIndex].trim();
+                    
+                    //TSV文字列では、データがないセルは空文字列 ('') になるので、nullのチェックに関しては
+                    // 空文字列 ('') を null として特別に扱う必要はなく、
+                    // 下記のif (cellValue !== '') のチェックで十分
+                    // クリップボードの値があれば、対応する入力フィールドに設定します。
+                    if (cellValue !== '') {
+                        //現在処理している入力要素（input）のHTMLタグ名が、
+                        // <SELECT>（プルダウン）であるかどうかをチェック
+                        if (input.tagName === 'SELECT') {
+                            // <select> の場合、オプションの値またはテキストと一致するか確認
+                            //Array.from(input.options)で<select>要素が持つ<option>のリストを、
+                            // .some()などの配列メソッドが使えるJavaScriptの配列に変換し、.some(...)で、
+                            // 配列の要素（ここでは各<option>）のどれか一つでも（）内の、
+                            // 指定した条件を満たすかをチェックする。opt => は配列の要素を順に受け取り、
+                            // 受け取った要素に対して=>の次に書かれている処理をする。
+                            // ここではユーザーに表示されるテキスト（例: 「点線」）がクリップボードの値と
+                            // 一致するかのチェックとHTMLで設定されている内部的な値（value属性、例: "dashed"）が
+                            // クリップボードの値と一致するかチェックをしている。
+                            // 最終的に結果（true または false）が optionExists に格納する
+                            const optionExists = Array.from(input.options).some(
+                                opt => opt.text === cellValue || opt.value === cellValue
+                            );
+                            if (optionExists) {
+                                //一致するオプションが存在する (optionExists が true)」と確認できた場合にのみ、
+                                // <select> の値（input.value）としてクリップボードの値（cellValue）を設定
+                                input.value = cellValue;
+                            }
+                        
+                        } else if (input.type === 'color') {
+                            // type="color" の場合、#RRGGBB形式に適合すれば値を設定
+                            //正規表現 (Regular Expression)を使ったデータ検証
+                            if (/^#[0-9A-F]{6}$/i.test(cellValue)) {
+                                input.value = cellValue;
+                            }
+                        
+                        } else if (input.type === 'date') {
+                            // type="date" の場合、YYYY-MM-DD 形式に一致するかを正規表現でチェックする
+                            // YYYY-MM-DD 形式（例: 2023-12-31）を検証する正規表現
+                            const datePattern = /^\d{4}-\d{2}-\d{2}$/; 
+                            if (datePattern.test(cellValue)) {
+                                input.value = cellValue;
+                            } 
+                            // ※形式が間違っている場合は値を設定せず、フィールドは空のままになる
+                        } else if (input.type === 'number') {
+                            // type="number" の場合、数値に変換可能か確認
+                            //parseFloat(cellValue) による数値への変換
+                            //isNaN(): 引数が NaN（数値ではない）である場合に true を返す
+                            //JavaScriptのグローバルオブジェクトとして存在する特殊な数値（無限大）を除外するために
+                            //isFinite(cellValue)で無限大などの特殊な値ではないかをチェック
+                            if (!isNaN(parseFloat(cellValue)) && isFinite(cellValue)) {
+                                input.value = cellValue;
+                            }
+                        } else {
+                            // type="text" やその他の場合は単純に値を設定
+                            input.value = cellValue;
+                        }
+                    }
+                    // この処理が終わったら、次のクリップボードの列へ移動
+                    columnIndex++;
+                });
+                
+                // 6. 行をテーブルに追加（tbodyに）
+                targetTable.querySelector('tbody').appendChild(newRow);
+                // ※ 行クリックイベントリスナーは、親要素（テーブル）に設定した
+                // イベントデリゲーションにより自動的に機能するため、ここでの個別の設定は不要です。
+            });
+        }
+
+        
+        //databaseTable の現在の内容をローカルストレージに上書き保存する関数。-----------------------------
+        //テーブルデータ本体の配列のみを固定キーで保存します。
+        function saveCurrentDatabaseData() {
+            // 固定キー: 常に最新のデータとして保存するため、キーは固定とします。
+            const STORAGE_KEY = 'currentDatabaseData';
+            //データベースのデータテーブルの要素をIDで取得。
+            const databaseTableElement = document.getElementById('databaseTable');
+            //取得した要素が無ければ、エラーを通知して処理を抜ける
+            if (!databaseTableElement) {
+                alert('エラー: ID "databaseTable" の要素が見つかりません。');
+                return;
+            }
+            // 1. 作成した getAllTableData 関数を使って全てのセルの値を漏れなく取得（テーブルデータ本体の配列）
+            //※ ★★★重用なコメント：この関数がこの前に定義されている必要がある。★★★
+            const tableData = getAllTableData(databaseTableElement);
+            
+            try {
+                // 2. データ本体の配列をそのままJSON文字列に変換し、固定キーでローカルストレージに保存（上書き実行）
+                //常に新しいデータが古いデータを上書きします。
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(tableData));
+                console.log(`[LocalStorage] 固定キー "${STORAGE_KEY}" でテーブルデータ本体を保存しました。`);
+                alert('データベースの現在の内容を保存しました。');
+            } catch (e) {
+                // 容量オーバーなど、書き込みエラーを処理
+                console.error('ローカルストレージへの保存中にエラーが発生しました:', e);
+                alert('データの保存に失敗しました。ローカルストレージの容量を確認してください。');
+            }
+        }
+        
+        // ------------------------------------------------------------------------------------
+        // 【新規追加】データベースからデータをロードし、databaseTableに反映する関数
+        // -----------------------------------------------------------------------------------
+        function loadDatabaseData() {
+            // ★重要★ 保存関数に合わせてキーを修正
+            const STORAGE_KEY = 'currentDatabaseData'; 
+            // databaseTable要素の取得
+            const databaseTable = document.getElementById('databaseTable');
+            if (!databaseTable) {
+                console.error("エラー: ID 'databaseTable' の要素が見つかりません。");
+                return;
+            }
+            // 1. ローカルストレージから JSON 文字列を取得（修正後のキーを使用）
+            const savedDataJSON = localStorage.getItem(STORAGE_KEY);
+            // データが存在しない、または空の場合は処理を中断
+            if (!savedDataJSON) {
+                console.log('保存されたデータが見つかりません。キー:', STORAGE_KEY);
+                // databaseTableをクリアして終了
+                databaseTable.querySelector('tbody').innerHTML = '';
+                redrawAllConfirmedLines();
+                return;
+            }
+            try {
+                // 2. JSON 文字列を JavaScript オブジェクト（配列）に変換
+                const loadedData = JSON.parse(savedDataJSON); 
+                // ★配列チェックの追加: loadedDataが配列ではない場合の防御★
+                if (!Array.isArray(loadedData)) {
+                    console.error("ロードデータが有効な配列形式ではありません。データを初期化します。");
+                    databaseTable.querySelector('tbody').innerHTML = '';
+                    redrawAllConfirmedLines();
+                    return;
+                }
+                
+                // 3. databaseTableに反映
+                const databaseTbody = databaseTable.querySelector('tbody');
+                // 既存の databaseTable の行をすべてクリア
+                databaseTbody.innerHTML = '';
+                
+                // ロードしたデータを databaseTable に追加
+                loadedData.forEach(lineData => {
+                    // ★既存関数を使用: テンプレートから新しい行を作成
+                    const newRow = createRowFromTemplate();
+                    // ★★★ 修正箇所：日付、登録名、項目名のロード処理を追加し、キー名を統一する ★★★
+                    
+                    // 1. 日付、登録名、項目名 (キーはHTMLのクラス名と一致)
+                    newRow.querySelector('.data-date').value = lineData['data-date'] || '';
+                    newRow.querySelector('.data-document-name').value = lineData['data-document-name'] || '';
+                    newRow.querySelector('.data-item-name').value = lineData['data-item-name'] || '';
+                    // 2. 線の設定情報 (キーはクラス名と一致)
+                    newRow.querySelector('.line-style').value = lineData['line-style'] || '実線';
+                    newRow.querySelector('.line-width').value = parseFloat(lineData['line-width']) || 1;
+                    newRow.querySelector('.line-color').value = lineData['line-color'] || '#000000';
+                    
+                    // 3. テキストとフォントサイズ (キーはクラス名と一致)
+                    newRow.querySelector('.text-input').value = lineData['text-input'] || '';
+                    newRow.querySelector('.font-size').value = parseFloat(lineData['font-size']) || 12;
+                    
+                    // 4. 座標情報を設定 (x1からy20までの40個に対応)
+                    const coordInputs = newRow.querySelectorAll('.coord-input');
+                    
+                    // 期待される座標キーの配列 (x1からy20まで40個)
+                    const expectedCoordKeys = [];
+                    for (let i = 1; i <= 20; i++) {
+                        expectedCoordKeys.push(`x${i}`);
+                        expectedCoordKeys.push(`y${i}`);
+                    }
+                    
+                    // 修正されたロードロジック
+                    expectedCoordKeys.forEach((key, index) => {
+                        const coordInput = coordInputs[index];
+                        // lineDataから対応する座標値を取得
+                        let coordValue = lineData[key]; 
+
+                        // coordValue !== undefined のチェックは次のステップで行う
+                        if (coordInput) { 
+
+                            // ★★★ ここに修正を追加 ★★★
+                            //保存の関数内でgetAllTableData関数を使って、
+                            // 空欄を null として保存した場合、
+                            //JavaScriptでは、parseFloat(null) は 0 (ゼロ) になるので、
+                            //0を含む座標は有効にして、nullで無効か判断したいので
+                            // データベースから読み込んだ値が null または undefined の場合は、
+                            // 数値パースせずに空欄を設定する
+                            if (coordValue === null || coordValue === undefined) {
+                                // 空欄を設定
+                                coordInput.value = '';
+                            } else {
+                                // 文字列または有効な数値の場合のみパースする
+                                const numValue = parseFloat(coordValue);
+                                // NaNの場合は空欄として、有効な数値の場合はその値を設定 (0も含む)
+                                coordInput.value = isNaN(numValue) ? '' : numValue;
+                            }
+                            // ★★★ 修正はここまで ★★★
+                        }
+                    });
+                    // 行をテーブルに追加
+                    databaseTbody.appendChild(newRow);
+                });
+                console.log(`データベースのロードが完了し、databaseTable（キー: ${STORAGE_KEY}）に反映されました。`);
+                // 4. ロードが完了したらCanvasを再描画
+                redrawAllConfirmedLines();
+            } catch (error) {
+                console.error('データのロード中にエラーが発生しました:', error);
+                alert('保存データの形式が不正なため、ロードできませんでした。');
+            }
+        }
+        
+
+        
+        //-------------------------------------------------------------------------------------------
+        // 印刷設定データテーブルの保存の関数
+        // ------------------------------------------------------------------------------------------
+        function savePrintSetting() {
+            
+            //グローバル変数ではなく、関数内でテーブル要素を取得する方式に修正
+            const printSettingDataTable = document.getElementById('printSettingDataTable');
+            
+            if (!printSettingDataTable) {
+                console.error("エラー: 'printSettingDataTable' 要素が見つかりません。");
+                return;
+            }
+            
+            //【データの抽出ロジック全体を置き換え】
+            //作った関数の印刷設定データテーブル専用の現在の内容を抽出しデータの無い行を取り除く
+            // フィルタリングをしたキー付きオブジェクトの配列を返す関数getPrintSettingData を呼び出す
+            const data = getPrintSettingData(printSettingDataTable); 
+            
+            // データのフィルタリング後に、データが空の場合はアラートを出して終了
+            if (data.length === 0) {
+                alert('保存するデータがありません。');
+                return;
+            }
+            
+            // ローカルストレージに専用のキー ('printSettings') でJSON形式で保存
+            try {
+                localStorage.setItem('printSettings', JSON.stringify(data));
+                alert('印刷設定テンプレートを保存しました。');
+            } catch (e) {
+                alert('印刷設定の保存に失敗しました。ローカルストレージの容量を確認してください。');
+                console.error("LocalStorage Save Error:", e);
+            }
+        }
+        
+        // ----------------------------------------------------------------------------------------------
+        // 印刷設定データテーブルのロード関数
+        // -------------------------------------------------------------------------------------------
+        // 依存する関数: addPrintSettingRowFromTemplate (行の作成と挿入を行う関数)
+        function loadPrintSetting() {
+            // 1. ローカルストレージからJSON文字列を取得
+            const json = localStorage.getItem('printSettings');
+            // データが存在しない場合の処理
+            if (!json) {
+                console.log('[LocalStorage] 保存された印刷設定データはありません。');
+                // データがない場合は、空のテーブルを維持し、処理を終了します。
+                // 初期行が必要な場合は、ここで addPrintSettingRowFromTemplate() を呼び出します。
+                return;
+            }
+            // 2. JSON文字列をJavaScriptの配列に変換
+            let data;
+            try {
+                data = JSON.parse(json);
+            } catch (e) {
+                console.error('JSONデータの解析に失敗しました。', e);
+                alert('印刷設定データの読み込みに失敗しました。（データ形式エラー）');
+                return;
+            }
+            
+            // テーブルの<tbody>要素を取得 (savePrintSetting と同様に、関数内で取得)
+            const printSettingTableElement = document.getElementById('printSettingDataTable'); 
+            //{条件} ? {真の場合(条件が成立)} : {偽の場合(条件が不成立)}
+            //ここでは、もしprintSettingTableElementが存在しなければ、そもそも .querySelector を実行せず、nullのまま次に進み、
+            //printSettingTableElement が存在するならば、その中の <tbody> 要素を探して取得する。
+            const printSettingTBody = printSettingTableElement ? printSettingTableElement.querySelector('tbody') : null;
+            
+            if (!printSettingTBody) {
+                console.error("エラー: テーブルの<tbody>要素が見つかりません。");
+                    return;
+            }
+            
+            // 3. 既存の行をすべて削除してテーブルをクリア
+            printSettingTBody.innerHTML = ''; 
+            
+            // 4. データに基づいて新しい行を作成し、値を復元
+            //読み込んだデータは配列の形式であり、かつ、中に一つ以上の設定テンプレートが含まれているかチェック
+            if (Array.isArray(data) && data.length > 0) {
+                //読み込んだデータの配列をループし、保存されていた設定オブジェクト（setting）を一つずつ処理
+                data.forEach(setting => {
+                    // ★テンプレートから行を作成しテーブルに追加する関数を呼び出す★
+                    // 作った印刷設定データテーブルのテンプレートから新しい行を作る関数を使って、新しい行を取得
+                    const newRow = addPrintSettingRowFromTemplate(); 
+
+                    console.log("新しく作成された行の要素:", newRow); // ★コンソールで確認★
+                    
+                    // 行が正常に追加されたか確認
+                    if (newRow) {
+                        // 新しい行から入力要素を取得
+                        //配列のように振る舞うオブジェクト（NodeList、ノードリスト）で取得
+                        const inputs = newRow.querySelectorAll('input[type="text"], input[type="number"]');
+                        // 値を復元 (順番に 書類名, 印刷状況, X, Y)
+                        inputs[0].value = setting.docName || '';
+                        inputs[1].value = setting.printsituation || '';
+                        inputs[2].value = setting.scaleFactorX || 0;
+                        inputs[3].value = setting.scaleFactorY || 0;
+
+                        console.log("設定される値:", setting); // ★コンソールで確認★
+                        
+                        //【追加するコード】: 新しい行をテーブル本体に追加する
+                        // ★ newRow を tbody に挿入 ★
+                        printSettingTBody.appendChild(newRow); 
+                    }
+                });
+
+                alert('印刷設定データをロードしました。');
+
+            } else {
+                console.log('[LocalStorage] 保存データは空でした。');
+            }
+        }
+        
+        // -------------------------------------------------------------------------------------------
+        // 印刷設定データテーブル専用のクリップボードコピー関数 (非同期関数)
+        // ------------------------------------------------------------------------------------------
+        async function copyPrintSettingDataToClipboard() {
+            // 1. テーブル要素を取得 (安全性の確保)
+            const printSettingDataTable = document.getElementById('printSettingDataTable');
+            
+            if (!printSettingDataTable) {
+                console.error("エラー: 'printSettingDataTable' 要素が見つかりません。");
+                alert('エラー: 印刷設定テーブルが見つかりませんでした。');
+                return;
+            }
+            
+            // 2. 専用の抽出関数でデータ（キー付きオブジェクトの配列）を取得
+            //(getPrintSettingData は空の行を除外したキー付きオブジェクトの配列を返す)
+            const data = getPrintSettingData(printSettingDataTable);
+            
+            if (data.length === 0) {
+                alert('コピーするデータがありません。有効な設定が入力されているか確認してください。');
+                return;
+            }
+            
+            // 3. データをタブ区切りテキスト (TSV) に変換する
+            // ヘッダー行を定義 (getPrintSettingData のキーの順番と合わせる)
+            const headers = ["書類名", "印刷状況", "X補正倍率", "Y補正倍率"];
+            
+            // ヘッダー行の作成
+            let tsvText = headers.join('\t') + '\n';
+            
+            // データ行の作成
+            data.forEach(item => {
+                const row = [
+                    item.docName,
+                    item.printsituation,
+                    item.scaleFactorX,
+                    item.scaleFactorY
+                ];
+                // タブ (\t) で結合し、改行 (\n) を追加
+                tsvText += row.join('\t') + '\n';
+            });
+
+            // 4. クリップボードに書き込む
+            try {
+                // navigator.clipboard.writeText は非同期操作 (async/awaitが必要)
+                await navigator.clipboard.writeText(tsvText);
+                alert(`印刷設定テンプレート (${data.length}行) をクリップボードにコピーしました。`);
+            
+            } catch (err) {
+                console.error('クリップボードへの書き込みに失敗しました:', err);
+                // HTTPSではない環境や権限がない場合にエラーになる
+                alert('クリップボードへの書き込みに失敗しました。（ブラウザの制限を確認してください）');
+            }
+        }
+
+        // ------------------------------------------------------------------------------------------
+        // ★印刷設定データテーブル専用のクリップボードペースト関数 (4セル対応)
+        // ------------------------------------------------------------------------------------------
+        // 依存関数: addPrintSettingRowFromTemplate (行を作成して返す関数)
+        async function pastePrintSettingDataFromClipboard() {
+            let clipboardText;
+            const printSettingDataTable = document.getElementById('printSettingDataTable');
+            const printSettingTBody = printSettingDataTable ? printSettingDataTable.querySelector('tbody') : null;
+            
+            if (!printSettingTBody) {
+                alert("エラー: 印刷設定テーブルが見つかりません。");
+                return;
+            }
+            
+            try {
+                // 1. クリップボードの内容を非同期で取得
+                clipboardText = await navigator.clipboard.readText();
+            } catch (err) {
+                console.error('クリップボードの読み取りに失敗しました:', err);
+                alert('クリップボードからのデータ読み取りに失敗しました。権限を確認してください。');
+                return;
+            }
+            
+            if (!clipboardText || clipboardText.trim() === '') {
+                return; // データがない場合は何もしない
+            }
+            
+            // 2. データを解析（行に分割し、空行を除外）
+            // trim()で行頭・行末の空白を削除し、改行で分割
+            //このコード全体で見た場合、最初の trim() を削除しても、
+            // 後の split と filter の組み合わせが空行を取り除く役割を果たすため、
+            // 最終的な結果の rows 配列はほぼ変わらないが、最初のtrim() は
+            // 「処理の前にデータを綺麗にする」という役割を担っており、
+            // コードの堅牢性（安定性)を高めるために残しておくことが推奨
+            //①trim()でデータの外側にある、不要な空白や改行をすべて取り除く
+            //②split('\n')でテキストデータを、改行ごとに区切られた**「行の配列」**に変換
+            //③filter(...) で配列の各要素（行）の中身をチェックし、
+            // 空白のみの行や空文字列を排除してータを一切含まない空の行を配列から取り除く
+            const rows = clipboardText.trim().split('\n').filter(r => r.trim() !== '');
+            
+            if (rows.length === 0) {
+                return;
+            }
+            
+            // 3. データ行ごとに処理を実行
+            rows.forEach(rowData => {
+                // 列の分割: タブ文字 \t で分割
+                const columns = rowData.split('\t');
+                
+                // 期待する4列（書類名, 印刷状況, X, Y）が揃っているか確認
+                // ヘッダー行をペーストしている場合も考慮し、最低4列あれば処理を進める
+                if (columns.length < 4) {
+                    console.warn("警告: 期待される列数(4)が不足しています。この行はスキップします。", columns);
+                    return;
+                }
+                
+                // 4. 専用の行作成関数を使って新しい行を作成
+                // この関数は<tr>要素を返し、テーブルへの追加はまだ行わない
+                const newRow = addPrintSettingRowFromTemplate(); 
+                
+                if (newRow) {
+                    // 新しい行内の入力要素を取得 (input[0]~[3]が順番に '書類名','印刷状況','X','Y' に対応)
+                    const inputs = newRow.querySelectorAll('input[type="text"], input[type="number"]');
+                    
+                    if (inputs.length >= 4) {
+                        // 5. クリップボードの値を対応する入力要素に設定
+                        // trim()で前後の空白を除去
+                        
+                        // (0) 書類名 (text)
+                        inputs[0].value = columns[0].trim();
+                        
+                        // (1) 印刷状況 (text)
+                        inputs[1].value = columns[1].trim();
+                        
+                        // (2) X軸補正倍率 (number)
+                        // 数値型に変換可能であれば設定。数値でない場合は空欄として処理されます
+
+                        //三項演算子という短い条件文 (条件 ? 真の場合 : 偽の場合)
+                        //xValue が NaN (数値ではない) であれば true
+                        //true の場合（変換に失敗した場合）：入力フィールドの値を空文字列 ('') に設定
+                        //false の場合（変換に成功した場合）：入力フィールドの値を変換された数値に設定
+                        const xValue = parseFloat(columns[2].trim());
+                        inputs[2].value = isNaN(xValue) ? '' : xValue;
+                        
+                        // (3) Y軸補正倍率 (number)
+                        const yValue = parseFloat(columns[3].trim());
+                        inputs[3].value = isNaN(yValue) ? '' : yValue;
+                        
+                        // 6. 行をテーブルに追加（tbodyに）
+                        printSettingTBody.appendChild(newRow);
+                    }
+                }
+            });
+            
+            if (rows.length > 0) {
+                alert(`${rows.length}件の印刷設定データをクリップボードから貼り付けました。`);
+            }
+        }
+
+
+        // 【新規追加】印刷関数 ------------------------------------------------------------------
+        // 役割: ブラウザの印刷ダイアログを呼び出します。
+        function printCanvasAndTables() {
+            // Canvasと表示中のデータ（抽出データと入力データ）を印刷するために、
+            // CSSで印刷時のレイアウトを調整してから印刷を実行します。
+            window.print();
+        }
+        
+        // ★印刷設定テーブルから、選択されている行（単一行のみ）のX/Y補正倍率を取得する関数------------------
+        // セルインデックス 2 (X倍率) と 3 (Y倍率) を取得する。
+        // 複数行が選択されている場合、または選択されていない場合はエラーを返し、処理を中断。
+        // * @returns {{scaleFactorX: number, scaleFactorY: number} | null} 
+        //   補正倍率を持つオブジェクト、またはエラーの場合はnull。
+        function getPrintScaleData() {
+            // 1. 印刷設定テーブルのtbodyを取得
+            const printSettingDataTbody = printSettingDataTable.querySelector('tbody');
+            // 2. 選択されている全ての行を取得 (前提: 選択クラスは 'selected')
+            const selectedRows = printSettingDataTbody.querySelectorAll('tr.selected');
+            
+            // 3. 選択行数のチェック
+            if (selectedRows.length !== 1) {
+                if (selectedRows.length === 0) {
+                    alert('エラー: 印刷に使用する設定行が選択されていません。単一の行を選択してください。');
+                } else {
+                    alert('エラー: 印刷に使用する設定行が複数選択されています。単一の行のみを選択してください。');
+                }
+                return null; // 処理を中断
+            }
+            
+            // 単一の選択行を取得
+            const selectedRow = selectedRows[0];
+            
+            // 4. 補正倍率の入力フィールドを取得 (セルインデックス 2 と 3 を使用)
+            
+            // X軸補正倍率の入力欄 (セルインデックス 2) の要素取得
+            const scaleXInput = selectedRow.cells[2] ? selectedRow.cells[2].querySelector('input') : null;
+            // Y軸補正倍率の入力欄 (セルインデックス 3) の要素取得
+            const scaleYInput = selectedRow.cells[3] ? selectedRow.cells[3].querySelector('input') : null;
+            
+            let scaleFactorX = 1.0; // デフォルト値は 1.0 (等倍) に設定
+            let scaleFactorY = 1.0; // デフォルト値は 1.0 (等倍) に設定
+            
+            // 5. 値を取得し、数値に変換
+            if (scaleXInput && scaleYInput) {
+                // .value を取得し、parseFloatで数値に変換
+                const xVal = parseFloat(scaleXInput.value);
+                const yVal = parseFloat(scaleYInput.value);
+                
+                // 6. 取得した値の有効性チェックと代入
+                // NaNの場合はデフォルト値 1.0 を使用
+                scaleFactorX = isNaN(xVal) ? 1.0 : xVal;
+                scaleFactorY = isNaN(yVal) ? 1.0 : yVal;
+                
+                // ゼロチェックは不要だが、意図的に 0 を入力させたくない場合は以下のチェックを有効にする
+                /* if (scaleFactorX === 0 || scaleFactorY === 0) {
+                alert('エラー: 補正倍率に 0 は指定できません。等倍にする場合は 1 を入力してください。');
+                return null;
+                } 
+                */
+            
+            } else {
+                // セルや入力欄が見つからなかった場合のガード
+                console.error("エラー: 補正倍率入力欄 (セル 2, 3) が見つかりません。HTML構造を確認してください。");
+                // この場合も処理を進められるよう、デフォルト値 1.0 を返す
+            }
+            
+            // 7. 補正倍率を返す // ★戻り値のキー名を修正
+            return {
+                scaleFactorX: scaleFactorX, 
+                scaleFactorY: scaleFactorY
+            };
+        }
+        
+        
+        //抽出データテーブルの座標を一時的にスケーリングし、印刷画面を表示し、印刷後に元に戻す関数。
+        // ★機能変更: 座標補正を適用し、線と文字のみを印刷する（背景画像なし）
+        function printExtractedDataByScaling() {
+            // 1. 作った関数で座標の基準値の取得
+            const scaleData = getPrintScaleData();
+            if (!scaleData) {
+                return; // エラーメッセージはgetPrintScaleDataで出力済み
+            }
+            
+            // getPrintScaleData関数を使って直接倍率を取得
+            const scaleFactorX = scaleData.scaleFactorX; // X軸の補正倍率
+            const scaleFactorY = scaleData.scaleFactorY; // Y軸の補正倍率
+            
+            const extractedRows = document.querySelectorAll('#extracteddataTable tbody tr');
+            // 抽出テーブルの全行の全座標をスケーリング
+            extractedRows.forEach(row => {
+                const coordInputs = row.querySelectorAll('.coord-input');
+                
+                coordInputs.forEach((input, index) => {
+                    const value = parseFloat(input.value);
+
+                    if (!isNaN(value)) {
+                        let scaledValue;
+                        // 座標インデックスの確認 (xは偶数インデックス、yは奇数インデックス)
+                        if (index % 2 === 0) {
+                            scaledValue = value * scaleFactorX;
+                        } else { 
+                            scaledValue = value * scaleFactorY;
+                        }
+                        // 変更後 (補正後の新しいピクセル座標を生成)
+                        // 小数点第3位に丸めて、補正後のピクセル座標とする
+                        // Math.round() は小数点第1位を四捨五入して整数にする機能しかないため、
+                        // 目的の小数点第3位を一時的に整数部（1の位）に移動させるために 1000 を乗算し、
+                        // その後 1000 で除算して元の桁に戻している。（結果は数値型を維持する）
+                        input.value = (Math.round(scaledValue * 1000) / 1000).toString();
+                    }
+                });
+            });
+            // 3. 再描画と印刷の実行
+            // ① 【新規追加】<body>に一時的にCSSクラスを追加し、印刷時の背景画像を非表示にするCSSを有効化
+            document.body.classList.add('print-overlay-only');
+            
+            // ② 【修正】スケーリングされた座標でCanvasを再描画（線と文字のみ）
+            // redrawAllConfirmedLines() を redrawOnlyLinesAndText() に置き換える
+            redrawOnlyLinesAndText(); 
+            
+            // 印刷ダイアログを表示
+            window.print();
+            
+            // 4. データの復元
+            // ③ 【新規追加】<body>からクラスを削除し、画面上の背景画像を元に戻す
+            document.body.classList.remove('print-overlay-only');
+            
+            // 抽出テーブルをクリア
+            extracteddataTableBody.innerHTML = '';
+            
+            // 元の抽出処理を実行し、画面表示を元に戻す
+            performDataExtraction();
+            
+            // 画面表示はperformDataExtraction内でredrawAllConfirmedLinesが呼ばれることで復元される。（変更なし）
+        }
+
+
+
+        // マウスイベントの座標を、Canvasの内部描画座標系に変換して返す。------------------------------------
+        // 引数 {MouseEvent} e - マウスイベントオブジェクト
+        // 引数 {HTMLCanvasElement} canvas - 対象のCanvas要素
+        // 戻り値 {{x: number, y: number}} 変換された座標
+        function getScaledCoords(e, canvas) {
+
+            //★以下関数の説明ーーーーーーーーーーーーーーーーーーーーーーーーー
+            //クリックしたとき取得されるのは画面自体を基準とした座標で
+            //描画されるときにはCanvasの内部描画サイズを基準とした座標なので
+            //デバイス全体から見た配置にあるキャンバスの座標を引くことで、
+            //キャンバスの配置を基準とした座標を算出する
+            //Canvasは、線を描く際、必ず「3. 内部描画サイズ」の座標系しか受け付けないので
+            //例えば50px をそのまま渡すと、1000px サイズの1/4 の位置に線が引かれてしまい、
+            //中央（500px）からズレるので、画像の縮尺された分の拡大のために縮尺の比率を算出する
+            //算出したキャンバスの配置を開始基準としたクリック座標に比率をかけて内部のデータに合わせて拡大する。
+            //ユーザーが視覚的に確認できるのは見た目上の相対座標までで、
+            // 描画時はもとの大きさの画像のピクセルで処理されるので誤解しないよう気を付ける
+            //★ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
+
+            //Canvas要素の「画面上での見た目のサイズと位置」の情報を取得する。
+            // この情報には、CSSで拡大・縮小された後の幅 (rect.width) や高さ (rect.height) が含まれる。
+            // Canvasの表示サイズ（画面上のピクセル数）を取得
+            const rect = canvas.getBoundingClientRect();
+            
+            //見た目の Canvas の左端を原点としたクリック位置（例：500px表示のCanvasで250pxの位置）を取得する。
+            //マウスがクリックしたX座標 (e.clientX) から、Canvasの左端のX座標 (rect.left) をひく。
+            // これにより、Canvasの左上を原点(0)とした表示上のX座標」が計算される
+            // 表示サイズに対するマウスの相対位置を取得（HTML/CSSによる見た目の座標）
+            const displayX = e.clientX - rect.left;
+            const displayY = e.clientY - rect.top;
+            
+            //Canvasの内部的な幅 (canvas.width、画像のオリジナル幅) を、
+            // 画面上に表示されている幅 (rect.width) で割る。
+            // これは、「幅の拡大・縮小の比率」（スケールファクター）を求めている。
+            // スケールファクター（比率）を計算
+            // Canvasの内部幅 / Canvasの表示幅
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            //で求めた表示上のX座標に、手順9で求めたスケールファクターを掛ける。
+            // これにより、Canvas内部の描画コンテキストが認識する正確なX座標が求まる。
+            // Math.floorで小数点以下を切り捨て、整数（ピクセル単位）にする。
+            // 内部描画座標系に変換
+            // (表示座標) * (スケールファクター) = (内部描画座標)
+            const scaledX = Math.floor(displayX * scaleX);
+            const scaledY = Math.floor(displayY * scaleY);
+            
+            return { x: scaledX, y: scaledY };
+        }
+
+
+        //指定したテーブルのデータを取得して、描画のオブジェクトを作る関数
+        function getDrawingDataFromTable(dataTable) {
+
+            //　dataTableの子孫であるすべての<tr>要素を取得
+            const dataRows = dataTable.querySelectorAll('tbody tr'); 
+             
+            //全ての線のオブジェクトを格納する用の配列を宣言
+            const allDrawingData = [];
+            
+            // 取得した全ての行をループ処理し、1行ずつ線の描画に必要な設定情報の要素を取得し、
+            // その要素から値を取得してデファルトの値を指定し、
+            dataRows.forEach(row => {
+                
+                // 線の設定情報を取得
+                // row.querySelector() は、その行（<tr>）の中から最初の該当要素を1つだけ取得します
+                // 線種（selectの要素を取得）
+                const styleInput = row.querySelector('.line-style');
+                //要素から値を取得
+                //三項演算子を使ってデフォルト値を設定
+                //[styleInput が存在するか？] ? [存在するならその値] : [存在しない場合の代替値（フォールバック）]
+                const lineStyle = styleInput ? styleInput.value : '実線';
+
+                // 線の太さ（input type="number" の要素を取得し、要素のvalueを取得し、数値に変換）
+                const widthInput = row.querySelector('.line-width');
+                // デフォルト値 (1) を設定し、後から再代入できるよう let で宣言
+                let lineWidth = 1; 
+                
+                if (widthInput) {
+                    const parsedWidth = parseFloat(widthInput.value);
+                    // 値が有効な数値で、かつ0より大きいことを確認（任意）
+                    if (!isNaN(parsedWidth) && parsedWidth > 0) {
+                        // バリデーションに合格した場合のみ、lineWidthの値を上書き（再代入）する
+                        lineWidth = parsedWidth;
+                    }
+                }
+
+                // 線の色（input type="color" の要素を取得し、要素のvalueを取得）
+                const colorInput = row.querySelector('.line-color');
+                const lineColor = colorInput ? colorInput.value : '#000000';
+                
+                
+                // --- 【追加】文字情報の取得 (1) ---
+                //入力文字のセルの要素取得
+                const textInput = row.querySelector('.text-input');
+                // 入力文字の値を取得
+                const textValue = textInput ? textInput.value.trim() : '';
+                //文字サイズのセルの要素取得
+                const fontSizeInput = row.querySelector('.font-size');
+                //文字サイズの値を取得
+                let fontSizeValue = 12;
+
+                //ユーザーが「文字サイズ」欄に 1以上の有効な数値 を入力したかどうかをチェックし、
+                // 問題なければその値を採用
+                if (fontSizeInput) {
+                    const parsedSize = parseFloat(fontSizeInput.value);
+                    
+                    if (!isNaN(parsedSize) && parsedSize > 0) {
+                        fontSizeValue = parsedSize;
+                    }
+                }
+
+                // 空の座標データの配列の宣言
+                const singleLinePoints = [];
+                
+                //ここから、1本分の線のデータのオブジェクトを作る
+                // lineDataオブジェクトを宣言し、今までに取得した1本の線に必要な全てのデータを
+                // まとめて格納する
+                //座標だけは、まず空の配列を格納してから、値をこの後取得して格納する
+                const lineData = {
+
+                    //オブジェクトリテラル内では、プロパティ（キーと値のペア）を区切るためにカンマ , を使う
+                    style: lineStyle,
+                    width: lineWidth,
+                    color: lineColor,
+                    // --- 【追加】プロパティの追加 (2) ---
+                    text: textValue, // 文字データ
+                    fontSize: fontSizeValue, // 文字サイズ
+                    // ------------------------------------
+
+                    // 空の座標データの配列
+                    // オブジェクトにに配列を格納するので二次元配列ではない
+                    // オブジェクトの要素として配列を格納
+                    points: singleLinePoints 
+                }
+
+                //座標の要素を全て取得する
+                // 各行（1本の線）内の座標データを全て取得
+                const lineCoords = row.querySelectorAll('.coord-input'); 
+                
+                // 【変更点】XとYをペアで処理するようにループを変更---------
+                // lineCoords.lengthは必ず偶数（x1, y1, x2, y2...）なので、i += 2 で回せます。
+                for (let i = 0; i < lineCoords.length; i += 2) {
+
+                    const xInput = lineCoords[i]; // X座標の入力要素
+                    const yInput = lineCoords[i + 1]; // Y座標の入力要素
+
+                    //このgetDrawingDataFromTable が coordInput.value から取得するのは、
+                    // 文字列 ('100' や '') のみで、null は取得しないので、
+                    // 空文字列 ('') をチェックするだけで、データベースの null 
+                    // から派生した空欄の座標を安全にスキップできるので nullのチェックは不要
+
+                    // XとYの値を取得（空文字列をチェック）
+                    const xValue = xInput ? xInput.value.trim() : '';
+                    const yValue = yInput ? yInput.value.trim() : ''; 
+                    // XとYの**両方**に値がある場合のみ、次の処理へ進む
+                    if (xValue !== '' && yValue !== '') {
+                        
+                        // 数値に変換
+                        const parsedX = parseFloat(xValue);
+                        const parsedY = parseFloat(yValue);
+                        
+                        // XとYの**両方**が有効な数値であることを確認し、配列に格納
+                        if (!isNaN(parsedX) && !isNaN(parsedY)) {
+                            singleLinePoints.push(parsedX, parsedY);
+                        }
+                    } else {
+                        // ★★★ 修正箇所：XまたはYが空欄の場合、それ以降の入力は無効とみなし、ループを終了する
+                        //座標入力が途切れたら、それ以降の入力欄を無視してデータの収集を終了するため、
+                        // 座標収集ループに break を追加
+                        break; // 以降の座標ペアの処理を停止
+                    }
+                };
+                // ------------------------------
+
+                // 抽出された座標データ（線のデータ１行分のデータ）を格納していき、
+                //　線のオブジェクトの配列を作る
+                // 線の描画には最低2点（4つの座標値：x1, y1, x2, y2）が必要なので、4以上で処理する
+                // 【修正】格納条件の変更 (3)
+                // 文字がある(textValue !== '')、または線が成立している(singleLinePoints.length >= 4)
+                if (textValue !== '' || singleLinePoints.length >= 4) {
+                    // 設定情報と座標データがセットになった lineData オブジェクトを最終配列に格納
+                    allDrawingData.push(lineData); 
+                }
+            });
+            return allDrawingData; // 線のオブジェクトデータを返す
+        }
+        
+        
+        // 線の描画関数 (drawLinesOnCanvas)-------------------------------------------------------
+        // 役割: 線の設定データと座標(allLinesData)を受け取り、Canvasに実際に線を描くための関数です。
+        // 引数 (関数に渡す情報):
+        // allLinesData: 描きたい線の、色、太さ、線種、座標（設計図となるデータ）
+        // ctx: 描画ツール（Canvasに実際に絵を描くための道具一式）
+        function drawLinesOnCanvas(allLinesData, ctx) {
+            
+            // 次の描画のために線種をリセット（実線に戻す）
+            ctx.setLineDash([]); 
+            // 取得した全ての線のオブジェクトをループ処理
+            allLinesData.forEach(lineData => {
+                const points = lineData.points;
+                
+                // 線の描画には最低2点（4つの座標値）が必要
+                // 配列はpoints[0] (X1), points[1] (Y1),points[2] (X2), points[3] (Y2)...と続いてる
+                
+                // --- 【★修正】文字がない（線を描くべき）場合のみ実行 ---
+                // 条件: 1. textが空 (線を描きたい) 
+                // 条件:2. かつ、線が成立している（座標が4つ以上、つまりX1,Y1,X2,Y2以上ある）
+                if (lineData.text.trim() === '' && points.length >= 4) { 
+                    // 1. 描画設定の適用
+                    //Canvasの描画コンテキストオブジェクト（ctx）のプロパティ（属性）に
+                    //値を代入して線の設定をする
+                    ctx.strokeStyle = lineData.color; // 線の色
+                    ctx.lineWidth = lineData.width; // 線の太さ
+                    // 線種（style）の適用
+                    if (lineData.style === '点線') {
+                        // HTMLで定義されている '点線' に合わせて描画を設定
+                        // 2pxの線、4pxの隙間
+                        ctx.setLineDash([2, 4]); 
+                    } else{
+                        // '実線'の場合
+                        ctx.setLineDash([]);
+                    }
+                    // 2. パスの開始と座標点の描画
+                    ctx.beginPath(); // 新しいパスを開始
+                    // ★★★ 修正ポイント：最初の点 (X1, Y1) の有効性チェックと移動 ★★★
+                    const x1 = points[0];
+                    const y1 = points[1];
+
+                    //★座標のnullのチェックについて
+                    //このgetDrawingDataFromTable が読み取るHTMLの入力欄のvalueは、
+                    // たとえ何も入力されていなくても必ず文字列なのでデータ型として
+                    // JavaScriptのnullやundefinedを含むことはなく、loadDatabaseData 関数が、
+                    // データベースから読み込んだnull値を、テーブルの入力欄に空文字列 ('')として
+                    // 設定しているので入力欄のvalueが 空文字列 ('') かどうかをチェックするだけで、
+                    // nullから派生した空欄の座標を安全にスキップできる
+                    //空白の文字列チェックをするgetDrawingDataFromTableを使って引数のallLinesDataを受け取るので
+                    //この関数内で文字列の空白チェックはしなくてもいい
+                    
+                    //下記の条件をコメントアウトしたのはx1 !== 0 と $y1 !== 0 の条件を削除し、
+                    // 原点を含む線も描画されるようにするため
+                    // 最初の点が有効な数値か確認 (NaNまたは0でないこと)
+                    //if (typeof x1 === 'number' && x1 !== 0 && typeof y1 === 'number' && y1 !== 0) {
+                    
+                    // ★★★ 修正箇所：最初の点の有効性チェックの変更 ★★★
+                    // NaN でないことのみを確認し、0,0 であっても有効な座標として開始する
+                    if (typeof x1 === 'number' && typeof y1 === 'number') {
+
+                        // 最初の点に移動 (x1, y1)
+                        ctx.moveTo(x1, y1);
+                    } else {
+                        // 最初の点が無効な場合はこの線の描画をスキップ
+                        return; 
+                    }
+                    
+                    // 2番目の点から順に線をつなぐ (x2, y2, x3, y3, ...)
+                    // ループは i = 2 から開始
+                    for (let i = 2; i < points.length; i += 2) {
+                        const x = points[i];
+                        const y = points[i + 1];
+                        
+                        //下記のチェックだと途中の点に関する (x === 0 && y === 0) のチェックにより、
+                        // 途中に 0, 0 を含む折れ線が正しく描画されない
+                        // ★★★座標が無効（0 または NaN）な場合は、その点だけをスキップする ★★★
+                        //if (typeof x !== 'number' || typeof y !== 'number' || (x === 0 && y === 0)) {
+                            // この点では線を引かずに、次の有効な座標を探すために continue
+                            //continue; 
+                        //}
+                        
+                        // ★★★ 修正: 有効な数値でない場合（NaN, undefined）のみブレイクします。★★★
+                        // ★ 座標 0, 0 は有効な座標として描画します。
+                        if (typeof x !== 'number' || typeof y !== 'number') {
+                            // データが途切れた、または無効な数値が混入した場合はブレイク
+                            break; 
+                        }
+
+                        // 有効な座標が見つかったら、線をつなぐ
+                        ctx.lineTo(x, y);
+                    }
+                    // 3. 描画の実行
+                    // 実際に線を引く
+                    ctx.stroke();
+                    // 描画後は次の描画に影響が出ないよう線種を実線に戻す
+                    ctx.setLineDash([]);
+                }
+            });
+            //描画後は次の処理のために線種を実線に戻す
+            //しかし、ループの内側で既にリセットされている状態なので冗長なためコメントアウト
+            //ただ確実にリセットを保証するため残しておいても問題はない。
+            // ctx.setLineDash([]); 
+        }
+        
+        
+        // 【新規追加】文字の描画関数
+        // getDrawingDataFromTableから取得した配列をそのまま受け取ります
+        function drawTextOnCanvas(allDrawingData, ctx) {
+            allDrawingData.forEach(lineData => {
+                
+                // 条件: 1. 文字データがある (text.trim() !== '')
+                // 条件: 2. かつ、座標 (X1, Y1) が取得できている (points.length >= 2)
+                if (lineData.text && lineData.text.trim() !== '' && lineData.points.length >= 2) {
+                    
+                    // 描画設定の適用
+                    ctx.fillStyle = lineData.color; // 線の色を文字色として使用
+                    ctx.font = `${lineData.fontSize}px Arial`; // 文字サイズとフォント
+                    
+                    // 描画座標 (X1, Y1) を使用 (points配列の最初の2つ)
+                    const x = lineData.points[0]; // <--- X1 に終点座標が入る
+                    const y = lineData.points[1]; // <--- Y1 に終点座標が入る
+                    
+                    // 文字の描画
+                    ctx.fillText(lineData.text, x, y);
+                }
+            });
+        }
+
+
+        //------------------------------------------------------------------------
+        //描画処理を input イベントに集約し、コードをスッキリさせるため新しい関数を追加
+        // -----------------------------------------------------
+        // 【新規追加】全確定データ（抽出データ＋入力行）を再描画するメイン関数
+        // -----------------------------------------------------
+        function redrawAllConfirmedLines() {
+            // 画像がロードされていない場合は何もしない
+            if (!currentImage) return; 
+
+            // 1. Canvasをクリアして画像を再描画
+            ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+            ctx.drawImage(currentImage, 0, 0);
+
+            // 2. データの取得
+            // 2. 抽出データと入力行データを結合して描画
+            // 抽出テーブルの確定済み線データを取得
+            const extractedLinesData = getDrawingDataFromTable(extracteddataTable);
+            // 入力テーブルの現在の入力済み線データを取得
+            const inputLineData = getDrawingDataFromTable(document.getElementById('inputdataTable'));
+            // 全ての描画データを結合
+            const allDrawingData = extractedLinesData.concat(inputLineData);
+
+            // 3. 描画の実行
+            // I. 結合した全確定データの線を描画
+            drawLinesOnCanvas(allDrawingData, ctx);
+            
+            // II. 文字を描画 (新規関数)
+            // ★新規追加: 文字データを描画
+            drawTextOnCanvas(allDrawingData, ctx);
+            
+            // 描画後は次の処理のために線種を実線に戻す
+            //しかし既にdrawLinesOnCanvas(allDrawingData, ctx);で
+            // リセットされているため下記のコードはコメントアウトした。
+            //ctx.setLineDash([]);
+        }
+        
+        
+        // ---------------------------------------------------------------------------------------
+        // ★線と文字のみを再描画する関数 (背景画像は描画しない)★文字と線だけを書類に直接印刷する機能に使う
+        // ----------------------------------------------------------------------------------------
+        function redrawOnlyLinesAndText() {
+            // 1. Canvasをクリア (画像は再描画しない)
+            ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+            
+            // 2. データの取得 (変更なし)
+            //抽出テーブルの線のデータを取得
+            const extractedLinesData = getDrawingDataFromTable(extracteddataTable);
+            
+            // 3. 描画の実行 (線と文字のみ)
+            drawLinesOnCanvas(extractedLinesData, ctx);
+            drawTextOnCanvas(extractedLinesData, ctx);
+        }
+                
+                
+        // 仮の線をCanvasに描画する（設定を引数で受け取る）関数------------------------------------
+        // 役割: マウスドラッグ中など、**テーブルにまだ確定されていない**一時的な線 (仮線) を描画します。
+        //この関数は、**折れ線ではなく、一本の直線を描画する専用**です。
+        //始点は「一つ前の確定済みの座標 (tempLineStartPoint)」、
+        //終点は「マウスカーソルが今現在いる座標 (tempLineCurrentPoint)」として描画します。
+        //lineDataには、入力行から取得した色、太さ、線種の情報が入ります。
+        function drawTemporaryLineToMouse(ctx, lineData) {
+            // 1. 設定の適用（入力行から取得した設定を使用）
+            ctx.strokeStyle = lineData.color; // 入力行の色
+            ctx.lineWidth = lineData.width;   // 入力行の太さ
+            //線種（style）の適用
+            //入力行の設定（実線または点線）を反映させます。
+            if (lineData.style === '点線') 
+            { 
+                // HTMLで定義されている '点線' に合わせて描画を設定
+                ctx.setLineDash([2, 4]); // 2pxの線、4pxの隙間
+                } else {
+                    // '実線' の場合
+                    ctx.setLineDash([]);
+                }
+                // 2. 描画
+                ctx.beginPath();
+                //始点に移動 (一つ前の確定座標)
+                ctx.moveTo(tempLineStartPoint.x, tempLineStartPoint.y);
+                //終点まで線を引く (現在のマウス座標)
+                ctx.lineTo(tempLineCurrentPoint.x, tempLineCurrentPoint.y);
+                ctx.stroke();
+                ctx.setLineDash([]); // 描画後は次の処理のために実線に戻す
+        }
+
+
+        //画像データ描画のイベントリスナー---------------------------------------------------------
+        // 2D描画コンテキストを取得
+        //JavaScriptでcanvas.getContext('2d')と記述することで、
+        // 2Dグラフィックスを描画するための道具一式（メソッドやプロパティ）が詰まったオブジェクトを取得できる
+        
+        //eventはchange イベント　に関するすべての情報
+        //<input type="file">で画像ファイルを選択すると、changeイベントが発生します。
+        //このイベントが発生したときに、｛｝で囲まれたブロック内のコードが実行される
+        imageUpload.addEventListener('change', (event) => {
+
+            //選択されたファイルの情報（ファイル名、サイズなど）を取得し、file変数に格納
+            //選択されたファイルは必ずfiles配列の[0]番目に入っているので、0にしている
+            const file = event.target.files[0];
+            if (file) {
+                //入力行のデータをデータベースに登録する際に、書類名のセルに画像ファイル名を
+                // 入力するために宣言したグローバル変数にファイル名を格納し、保持する。
+                // ファイル名を取得し、格納する時点で拡張子を削除する処理を適用
+                // \.[^/.]+$/ : 末尾にある拡張子 (.xxx) の部分を指します
+                //.replace(A, B)は文字列内のパターン A に一致する部分を、文字列 B に置き換える
+                ///\.[^/.]+$/ という正規表現をAにして削除したい拡張子のパターンを指定
+                //Bを""として空文字にしてパターンに一致した部分を何も含まない文字列に置き換える（＝削除する）
+                currentFileName = file.name.replace(/\.[^/.]+$/, "");
+                //書類名のセルの要素を取得
+                const docNameInput = document.getElementById('documentNameInput');
+                //取得した要素があるかをチェック
+                if(docNameInput) { 
+                    //要素の値に拡張子を削除したファイル名を設定
+                    docNameInput.value = currentFileName; 
+                }
+                
+                //FileReaderはファイルの内容をブラウザのメモリに読み込んで、JavaScriptで扱えるようにするためのもの
+                const reader = new FileReader();
+
+                //非同期処理onLoadイベントハンドラを登録する（「ファイルの読み込みが終わったらこの｛｝内の処理を実行してね」と宣言)
+                //この e オブジェクトは、FileReaderがファイルの読み込みを終えたという「onload イベント」に関する情報
+                reader.onload = (e) => {
+
+                    //画像を一時的に格納するための空のオブジェクトを作成する命令
+                    const img = new Image();
+                    img.onload = () => {
+
+                        // 現在の画像オブジェクトを変数に格納し保持
+                        currentImage = img; 
+
+                        //キャンバスの内部的なサイズを、読み込んだ画像の元のサイズに合わせる。
+                        imageCanvas.width = img.naturalWidth;
+                        imageCanvas.height = img.naturalHeight;
+                        
+                        // Canvas全体をクリア
+                        ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+                        
+                        //drawImageメソッドを使い、メモリに読み込んだ画像オブジェクトimgを、
+                        //キャンバスの左上（0, 0）を始点として描画
+                        ctx.drawImage(img, 0, 0);
+
+                        // 抽出データと入力行の確定線を再描画
+                        redrawAllConfirmedLines(); 
+                    };
+                    // .resultでe.target（FileReaderオブジェクト）の中にある、読み込みの結果である画像データ（Base64形式の文字列)を取得する。
+                    img.src = e.target.result;
+                };
+                //ファイルの読み込みを開始する
+                reader.readAsDataURL(file);
+            } else {
+                // ファイルが選択されていない場合、キャンバスをクリア
+                ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+            }
+        });
+        
+        
+        //画像コンテナ上のマウスダウンのイベントリスナー------------------------------------------------------
+        //【線描画の開始準備（座標の記録のみ）】
+        // 役割: マウスボタンが押された瞬間を検知し、線の描画を開始するための準備（フラグ設定と始点座標の記録）を行う。
+        // ※ この処理では、まだCanvas上に**線は描画されない**。実際の描画は後続の mousemove および mouseup 処理で行われる。
+        imageCanvas.addEventListener('mousedown', e => {
+
+            // 描画の前に、画像オブジェクトがロード済みであることを確認
+            if (currentImage) {
+                
+                //ユーザーが線ではなく「文字」を Canvas に描画しようとしているかを判断するために、
+                // イベントハンドラ内で、一時的に文字データを格納するローカル変数textValue を宣言・初期化
+                let textValue = '';
+
+                // Canvasの表示サイズに合わせて、クリックされた位置を内部描画座標に変換
+                // ★[自作関数] getScaledCoords関数で補正後の統一された座標を取得し、変数 coords に格納
+                const coords = getScaledCoords(e, imageCanvas);
+                
+                // ★描画状態のフラグを設定：ドラッグ操作が開始されたことを示す
+                isDrawing = true;
+                
+                // ★仮線の始点を記録：マウスを押した瞬間の座標を固定
+                // 取得した coords を、始点座標として記録する
+                tempLineStartPoint = coords; 
+                
+                // ★仮線の現在点も始点と同じ位置で初期化：線がまだ引かれていない状態
+                // 始点と同じ座標で現在点も初期化する
+                tempLineCurrentPoint = coords;
+                
+                // ★★★ 修正点B: lineDataForTemp の初期化を追加 ★★★
+                const inputRow = document.querySelector('#inputdataTable tbody tr');
+                if (inputRow) {
+                    // 文字入力セルの値を取得し、textValue に格納（ここで値を設定！）
+                    const textInput = inputRow.querySelector('.text-input');
+                    textValue = textInput ? textInput.value.trim() : '';
+                    
+                    // lineDataForTemp を最新の設定で初期化（mousemove で使用する）
+                    lineDataForTemp = {
+                        color: inputRow.querySelector('.line-color').value,
+                        // parseFloat が失敗した場合に備えてデフォルト値 (1) を設定
+                        width: parseFloat(inputRow.querySelector('.line-width').value) || 1, 
+                        style: inputRow.querySelector('.line-style').value,
+                        text: textValue, // 文字の有無を保持
+                        points: [] 
+                    };
+                }
+
+                // --- 【★追加するロジック】: 最初の座標を即座にセルに書き込む ---
+                const currentCoordInputs = document.querySelectorAll('#inputdataTable .coord-input');
+                // 値が入力されていない（空の）入力欄だけを抽出
+                const emptyInputs = Array.from(currentCoordInputs).filter(input => !input.value); 
+                
+                // 文字入力がなく、空のセルが4つ以上あり、かつそれが x1 から始まる場合にのみ値を設定する
+                // ★修正点D: 文字入力がない (textValue === '') かつ、線入力の条件を満たす場合のみX1, Y1を入力
+                if (textValue === '' && emptyInputs.length >= 4 && emptyInputs[0].dataset.coord === 'x1') { 
+                    
+                    // x1 に始点の X 座標を書き込む
+                    emptyInputs[0].value = coords.x;
+                    // y1 に始点の Y 座標を書き込む
+                    emptyInputs[1].value = coords.y;
+                    
+                    // 'input' イベントを強制的に発火させる
+                    // → これにより、redrawAllConfirmedLines() が即座に呼び出され、
+                    //    画像に x1, y1 から始まる線が再描画されます。
+                    emptyInputs[0].dispatchEvent(new Event('input'));
+                }
+                // -------------------------------------------------------------
+
+            }
+        });
+
+
+        //マウスリーブのイベントリスナー----------------------------------------------------------------
+        //★データベースに登録の際にプレスホルダーの値も入力されて困ったため---------------
+        // 画像の外に出たらプレースホルダーをクリア
+        imageCanvas.addEventListener('mouseleave', () => {
+            // マウスが画像エリアから離れたときにも、最新の要素リストを取得してクリアする
+            const currentCoordInputs = document.querySelectorAll('#inputdataTable .coord-input');
+            currentCoordInputs.forEach(input => {
+                input.placeholder = '';
+            });
+        });
+
+        
+        //画像コンテナ上のマウスムーブのイベントリスナー--------------------------------------------------
+        //【入力コンテナ上のマウスムーブの座標表示 + 仮線の描画】
+        // 役割: 
+        // 1. 未入力セルへの座標プレビュー表示
+        // 2. マウスドラッグ中 (isDrawing=true) に、始点から現在点までの「仮線」を描画する
+        imageCanvas.addEventListener('mousemove', e => {
+            
+            // 既存のgetScaledCoords関数を使って補正後の統一された座標を取得する。（プレビューと描画の両方で使用）
+            const coords = getScaledCoords(e, imageCanvas);
+            
+            // 描画の前に、画像がロード済みであることを確認
+            //（現在ドラッグ中である）のブロックの中に閉じ込めてドラッグ中以外はCanvasの
+            // クリアと再描画は一切行われないようにする
+            if (currentImage) { // ★修正点A: 描画処理全体をこの if の中に閉じ込めます。
+            
+                // --- 【★★★ 描画中の仮線処理 (isDrawing = trueの場合のみ実行) ★★★】 ---
+                if (isDrawing) { // ★このブロックの外では、クリアも再描画も行われません！(チラつき解消)
+
+
+                    // ★★★ ここにデバッグ用コードを追加 ★★★
+                    console.log('ドラッグ中:', coords.x, coords.y);
+                    console.log('始点:', tempLineStartPoint.x, tempLineStartPoint.y);
+
+                    // 1. 仮線の現在点を、最新のマウス座標に更新
+                    tempLineCurrentPoint = coords;
+                    
+                    // 2. Canvasをクリアして再描画
+                    ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+                    ctx.drawImage(currentImage, 0, 0);
+                    
+                    // 3. 確定済みの線データと入力中の線データがあれば再描画
+
+                    //抽出テーブルの線のデータ
+                    const extractedLinesData = getDrawingDataFromTable(document.getElementById('extracteddataTable')); 
+                    
+                    // ★修正点B: 現在入力中の行の線データも取得 (ドラッグ中に線が表示されるようにする)
+                    const inputLineData = getDrawingDataFromTable(document.getElementById('inputdataTable'));
+                    
+                    // 確定線と入力中のデータを結合して描画用の配列に格納
+                    const allDrawingData = extractedLinesData.concat(inputLineData);
+
+                    // 確定線と入力中の線を結合して描画
+                    drawLinesOnCanvas(extractedLinesData.concat(inputLineData), ctx);
+                    // ★★★ 修正点A: 確定済みの文字も描画する処理を追加 ★★★
+                    drawTextOnCanvas(allDrawingData, ctx); 
+                    
+                    // 4. 仮線 (tempLineStartPoint から tempLineCurrentPoint まで) を描画
+                    const inputRow = document.querySelector('#inputdataTable tbody tr');
+                    
+                    if (inputRow) {
+                        // 【A. 入力行から文字データと設定を取得】
+                        const textInput = inputRow.querySelector('.text-input');
+
+                        //効率的なデータの有無のチェック：三項演算子
+                        //コードの中で「もしあればそれを使って、なければこれを使いなさい」という
+                        //判断をするときに、if...else文よりも簡潔に書く方法
+                        //条件 ? 条件が真（true）の場合の値 : 条件が偽（false）の場合の値;
+                        const textValue = textInput ? textInput.value.trim() : '';
+                        
+                        // 文字サイズと色の設定も取得
+                        const fontSizeInput = inputRow.querySelector('.font-size');
+                        const fontSizeValue = parseFloat(fontSizeInput ? fontSizeInput.value : '12') || 12;
+                        const colorElement = inputRow.querySelector('.line-color');
+                        const colorValue = colorElement ? colorElement.value : '#000000'; 
+                        
+                        // 【B. 描画の分岐】---
+                        // ★文字プレビューを描画 (textValue が空でない場合)
+                        if (textValue !== '') {
+                            ctx.fillStyle = colorValue; 
+                            ctx.font = `${fontSizeValue}px Arial`; 
+                            
+                            // tempLineCurrentPoint (現在のマウス座標) を描画位置として使用
+                            ctx.fillText(textValue, tempLineCurrentPoint.x, tempLineCurrentPoint.y);
+                        
+                        } else if (tempLineStartPoint) { 
+                            // ★線プレビューを描画（textValue が空で、かつ線の始点がある場合）
+                            // drawTemporaryLineToMouse の呼び出し（既存のまま）
+                            // ※ lineDataForTemp は既存のコードで定義されている前提です
+                            drawTemporaryLineToMouse(ctx, lineDataForTemp);
+
+
+                        }
+                    }
+                }
+                // --- 【★★★ ここまで仮線処理 ★★★】 ---
+            } 
+            
+            //【入力コンテナ上のマウスムーブの座標表示】
+            //入力テーブルの.coord-input要素のリストを取得
+            const currentCoordInputs = document.querySelectorAll('#inputdataTable .coord-input');
+            //Array.from().filter() による空の入力欄の抽出
+            //取得した全座標入力欄の中から、値が入力されていない（空の）入力欄だけを絞り込む処理
+            //document.querySelectorAll() が返すNodeListはそのままでは配列の便利な機能(filter, map など)を
+            //使えないため、Array.from(currentCoordInputs)により、currentCoordInputsを標準のJavaScript配列に変換し、
+            //.filter(input => !input.value)で配列の各要素に対してテスト(条件式)を実行し、
+            // テストに合格した要素だけを集めて新しい配列を作る
+            //条件は空文字列 ("") の場合、JavaScriptでは false と判定されるので、それを利用し、
+            //!input.valueとして、空、つまりfalseの時！をつけてtrueにして配列を作る処理をするようにする
+            const emptyInputs = Array.from(currentCoordInputs).filter(input => !input.value); 
+            
+            if (emptyInputs.length > 0 && emptyInputs[0].dataset.coord.startsWith('x') && emptyInputs.length % 2 === 0) {
+                emptyInputs[0].placeholder = coords.x;
+                emptyInputs[1].placeholder = coords.y;
+            }
+            
+        });
+
+        
+        //画像コンテナ上のマウスアップのイベントリスナー------------------------------------------------
+        //【線描画の確定と座標の入力】
+        // 役割: マウスボタンが離された瞬間を検知し、ドラッグで引かれた仮線を確定させ、
+        //       その始点と終点の座標を、入力テーブルの空いているセルに入力する。
+        imageCanvas.addEventListener('mouseup', e => {
+            // 描画中ではない、または画像がロードされていない場合は何もしない
+            if (!isDrawing || !currentImage) return; 
+
+            // 1. 描画状態を終了 (フラグをリセット)
+            //mousemove で行っていた仮線の描画を停止させる
+            isDrawing = false;
+
+            // 2. 確定座標の取得（マウスムーブで取得した最終座標がそのまま終点となる）
+            //mousedown で記録された始点と、mousemove で動かされてきた終点の座標を取得
+            // ※ 終点座標は、mousemoveで既にtempLineCurrentPointに格納されているため、再計算は不要
+            //始点も再取得不要
+
+            // 固定された始点のX座標
+            const startX = tempLineStartPoint.x;
+            // 固定された始点のY座標
+            const startY = tempLineStartPoint.y;
+            // mousemoveで最後に更新された終点のX座標
+            const endX = tempLineCurrentPoint.x;
+            // mousemoveで最後に更新された終点のY座標
+            const endY = tempLineCurrentPoint.y;
+
+            // 3. 入力テーブルの座標セルを更新
+            //HTMLドキュメント全体の中から、特定の条件に合致するすべての要素
+            // (ここでは入力行のテーブルの.coord-input)を静的なリスト（NodeList）として取得し、
+            //currentCoordInputsという定数に格納
+            const currentCoordInputs = document.querySelectorAll('#inputdataTable .coord-input');
+
+            //Array.from().filter() による空の入力欄の抽出
+            //取得した全座標入力欄の中から、値が入力されていない（空の）入力欄だけを絞り込む処理
+            //document.querySelectorAll() が返すNodeListはそのままでは配列の便利な機能(filter, map など)を
+            //使えないため、Array.from(currentCoordInputs)により、currentCoordInputsを標準のJavaScript配列に変換し、
+            //.filter(input => !input.value)で配列の各要素に対してテスト(条件式)を実行し、
+            // テストに合格した要素だけを集めて新しい配列を作る
+            //条件は空文字列 ("") の場合、JavaScriptでは false と判定されるので、それを利用し、
+            //!input.valueとして、空、つまりfalseの時！をつけてtrueにして配列を作る処理をするようにする
+            const emptyInputs = Array.from(currentCoordInputs).filter(input => !input.value);
+            
+            // 【追加】文字入力の値を取得
+            const inputRow = document.querySelector('#inputdataTable tbody tr');
+            const textInput = inputRow ? inputRow.querySelector('.text-input') : null;
+            const textValue = textInput ? textInput.value.trim() : '';
+
+
+            // 空のセルが4つ以上あるか、または2つだけあるかを確認 (線は始点(x1,y1)と終点(x2,y2)で合計4つの座標が必要)
+            // 始点を入力する際は空のセルが4つ以上必要、終点を入力する際は空のセルが2つ以上必要
+            
+            //【新しい座標入力ロジック】
+            // 空のセルが2つ以上あるかを確認（終点のx, yの入力は最低限必要）
+            // 空のセルが2つ以上あるかを確認（X, Yの入力は最低限必要）
+            if (emptyInputs.length >= 2) {
+                // --- 4. 描画確定時の座標入力分岐 ---
+                if (textValue !== '') {
+                    // --- 1. 文字入力の場合（X1, Y1 のみ確定） ---
+                    // X1, Y1 のセルが空なら、現在の終点座標を入力
+                    if (emptyInputs[0].dataset.coord === 'x1') {
+                        // ★★★ 修正点B-1: X1 に始点、X2 に終点を入力 (X1とX2の両方が
+                        // マウスアップ時座標になる可能性あり) ★★★
+                        // X1, Y1 は mousedown で入力されていないため、ここで終点座標(endX, endY)を入力
+                        emptyInputs[0].value = endX;   // X1
+                        emptyInputs[1].value = endY;   // Y1
+                        emptyInputs[2].value = endX;   // X2 
+                        emptyInputs[3].value = endY;   // Y2
+                        
+                        // ★★★ 修正点B-2: X3, Y3 から（5番目から）の座標があればクリアする ★★★
+                        // 文字は一点なので、これ以降の線データ残骸をクリアする
+                        const allInputs = document.querySelectorAll('#inputdataTable .coord-input');
+                        
+                        // 5番目（index=4、つまりX3）からの入力欄をチェック
+                        for (let i = 4; i < allInputs.length; i++) {
+                            // 値が入っていた場合のみクリア（効率化のため）
+                            if (allInputs[i].value !== '') {
+                                allInputs[i].value = ''; 
+                            }
+                        }
+
+                    }
+                } 
+                // 以下の else if, else ブロックは文字入力がない場合の既存の線描画ロジック。
+                
+                // 現在空いている最初のX座標入力欄が 'x1' かつ、4つ以上の空きがあるかを確認
+            
+                else if (emptyInputs[0].dataset.coord === 'x1' && emptyInputs.length >= 4) {
+                    // --- 2. 最初の線分を入力する場合 (始点と終点を両方入力) ---
+                    emptyInputs[0].value = startX;
+                    emptyInputs[1].value = startY;
+                    // (x2, y2) にドラッグの終点を入力
+                    emptyInputs[2].value = endX;
+                    emptyInputs[3].value = endY;
+                } else if (emptyInputs[0].dataset.coord !== 'x1') {
+                    // --- 3. 連続描画の場合（折れ線の途中） ---
+                    // x2, x3, x4... などの途中点として終点のみを入力する。
+                    // 始点（前の終点）は、前の描画で既に入力されているため、今回は終点だけを追加する。
+                    emptyInputs[0].value = endX;
+                    emptyInputs[1].value = endY;
+                }
+                
+                // ★★★ 修正点: プレースホルダーのリセットを追加 ★★★
+                // プレビュー表示をクリアする
+                currentCoordInputs.forEach(input => {
+                    input.placeholder = ''; 
+                });
+
+                //Canvasを再描画して、確定した線を表示する
+                //作成したすべての確定済み線を再描画する関数を呼び出して
+                //最新の状態（画像と確定済みの線）を、チラつきなく、一気に、正しく表示し直す
+                redrawAllConfirmedLines(); // 再描画
+            }
+            
+            // 5. 仮線の座標をリセットし、連続描画モードを制御
+            if (textValue !== '') {
+                
+                //tempLineStartPoint`（次の線の**始点**）をどのように扱うかが焦点
+                //ドラッグ成立の確認
+                // tempLineCurrentPointは、マウスが動いている間（`mousemove`中）に、マウスの最終座標が格納される変数
+                //tempLineCurrentPointがnullでないということは、
+                // ユーザーが実際にマウスをドラッグし、始点と終点が異なる有効な線分が成立した**ことを意味します。
+
+                // ★文字入力が確定した後は、連続描画モードをリセット
+                tempLineStartPoint = null; 
+            }
+            else if (tempLineCurrentPoint) {
+                // 終点座標が有効な場合（ドラッグが成立していれば）
+                // 次の始点（tempLineStartPoint）を今回の終点に設定し、連続描画を可能にする
+                //次の線の始点 (tempLineStartPoint) を、今回のドラッグの終点 (tempLineCurrentPoint) の座標で
+                //上書きすることで、ユーザーが次の線を描き始めるとき (mousedown) には、tempLineStartPointは
+                //既に前の線の終点の位置を保持しているため、2回目のドラッグから線が途切れずにつながって描画されるようになる
+
+                // 文字入力がなく、線が成立したら、次の始点を設定（連続描画モード維持）
+                tempLineStartPoint = tempLineCurrentPoint; 
+            } else {
+                // ドラッグが成立しなければ（例えばクリックだけの場合）始点もリセット
+                //１ピクセルも動いていない相当微動だにしなかった場合は線を引く意思があるとはみなさず、
+                // 意図しない処理またはクリックで線ではなく単なる点になるのでリセットする
+                //微動だにせず変化が小さくてユーザーが気づかなくても、不要なデータとしてリセットする意味がある
+                //始点と終点が同じでも即座にバグ（クラッシュ）にはならないけど、
+                // 「無意味な処理」または「後続処理の問題」につながる可能性はある
+                //始点と終点が同じになる操作は、そもそも線分の入力として成立していないと見なし、
+                // それをトリガーに「連続描画モードを終了させる」のが最も合理的で安全な判断となる
+                tempLineStartPoint = null;
+            }
+            
+            // 仮線の現在点だけをリセット
+            //現在のドラッグ操作が完了したため、線の終点として使われたこの座標をリセットし、次のドラッグ操作に備えるため
+            //tempLineCurrentPoint = null; だけは、if/else の外で実行
+            tempLineCurrentPoint = null;
+
+        });
+
+
+        //入力ボタンのクリックイベントリスナー-------------------------------------------------------
+        //addRowBtn がクリックされたら以下の関数を実行
+        addRowBtn.addEventListener('click', () => {
+            //現在のinputdataTableの最初の行（tbody内の<tr>）を取得
+            const inputRow = document.querySelector('#inputdataTable tbody tr');
+            
+            //入力行が存在する場合のみ処理
+            if (inputRow) {
+                // 日付の入力要素を取得 (※セル番号は0、今後の変更あれば気を付ける)
+                const dataDateInput = inputRow.cells[0].querySelector('input[type="date"]'); 
+                // 日付入力欄が存在し、かつ値が空欄（または空白のみ）の場合
+                if (dataDateInput && dataDateInput.value.trim() === '') {
+                    alert('日付を入力してください。データベースへの登録を中止します。');
+                    return; // このイベントリスナーの実行をここで中断し、処理を抜けます
+                }
+                
+                // グローバル変数 currentFileName が存在する場合、書類名セルにファイル名を設定する
+                if (currentFileName) {
+                    // 書類名 (Document Name) の入力要素を取得
+                    const documentNameInput = inputRow.cells[1].querySelector('input');
+                    // ユーザーによる手動入力は考慮せず（readonlyのため）、ファイル名を直接設定する
+                    // ★readonly かつvalueも空というようにHTMLで設定されてるので、書類名が空かどうかのチェックは不要
+                    if (documentNameInput) {
+                        documentNameInput.value = currentFileName;
+                    }
+                }
+
+                // ★テンプレートから新しい行を作成
+                const newRow = createRowFromTemplate();
+                
+                // ★複製元の行から複製先の行へ、入力値をコピーする関数を実行（処理を関数化して短縮）
+                copyRowValues(inputRow, newRow);
+                
+                // 複製して値をコピーしたnewRowを、databaseTableBodyの子要素として追加
+                databaseTableBody.appendChild(newRow);
+                
+                //データを追加後、入力行をクリアする
+                clearRow(inputRow);
+                
+                //クリア後にファイル名を再セット
+                if (currentFileName) {
+                    const documentNameInput = inputRow.cells[1].querySelector('input');
+                    // clearRowによって書類名がクリアされた後、現在のファイル名を再設定
+                    if (documentNameInput) {
+                        documentNameInput.value = currentFileName;
+                    }
+                }
+            }
+        });
+
+
+        //抽出ボタンのクリックイベントリスナー----------------------------------------------------
+        //extractionBtnがclickされたら処理
+        extractionBtn.addEventListener('click',()=>{
+
+            //作った関数を呼び出す
+            //入力行の日付と書類名を基に、データベースから一致するデータを抽出し、抽出テーブルを更新する関数
+            performDataExtraction();
+
+        });
+
+
+        //抽出データ登録ボタンの処理--------------------------------------------------------
+        // extractedDataRegisterButton のクリックイベントリスナー
+        extractedDataRegisterButton.addEventListener('click', () => {
+            // extracteddataTable のデータを databaseTable にコピー
+            //引数の各要素は要素の取得しているブロックで取得済み
+            copyAllRowsBetweenTables(
+                extracteddataTable, // コピー元テーブル
+                databaseTable, // コピー先テーブル
+                datatableRowTemplate // テンプレート要素
+            );
+        });
+        
+
+        //データベースの選択行削除ボタンの処理--------------------------------------------------------
+        // deleteDatabaseRowBtn のクリックイベントリスナー
+        deleteDatabaseRowBtn.addEventListener('click', () => {
+            // 引数は 'databaseTableBody' 
+            deleteSelectedRowsFromTable(databaseTableBody); 
+        });
+        
+
+        // 昇順で並び替えボタンへのイベントリスナー設定-----------------------------------------------
+        // #sortDatabaseBtn が押されたときに #databaseTable を昇順で並び替える処理
+        sortDatabaseBtn.addEventListener('click', () => {
+            // 作った関数を使って昇順で並び替える
+            // 引数は databaseTable
+            sortDataTable(databaseTable);
+        });
+        
+
+        // 重複データ削除ボタンへのイベントリスナー設定---------------------------------------------
+        duplicateDeleteButton.addEventListener('click', () => {
+            // データベーステーブルを対象として重複削除を実行
+            deleteDuplicateRowsAndRebuild(databaseTable); 
+        });
+
+        
+        // --- データベースコピーボタンのイベントリスナー設定 ---------------------------------
+        copyDatabaseBtn.addEventListener('click', () => {
+
+            //指定されたHTMLテーブル要素から、全てのセルの値を抽出する関数のgetAllTableDataの
+            //値とキーは正しいけれど、ペアの順番がテーブルの見た目の順序と同じ保証がないので、
+            //getAllTableDataの戻り値と同じキーの名前を使って、テーブルの見た目の順序に合わせて
+            // キーを定義して、引数としてcopyTableDataToClipboardに渡して順番を合わせるのに利用する
+            
+            const databaseTable = document.getElementById('databaseTable');
+            
+            // 座標キーの生成 (x1〜y20を順番に配列に格納)
+            const coordinateKeys = [];
+            for (let i = 1; i <= 20; i++) {
+                coordinateKeys.push(`x${i}`);
+                coordinateKeys.push(`y${i}`);
+            }
+            
+            // ★★★ データベーステーブルのヘッダーキーを明示的に指定 (列の順番に合わせる) ★★★
+            // Object.keys()の順序の不確実性を回避するため、テーブルの見た目の順序に合わせてキーを定義します。
+            const databaseKeys = [
+                // 最初の8列のキー
+                "data-date", "data-document-name", "data-item-name", "text-input", 
+                "font-size", "line-style", "line-width", "line-color", 
+                // 座標キー (40個)
+                //coordinateKeys の配列（例：['x1', 'y1', 'x2', 'y2', ...]）の前に ... を付けることで、
+                //その配列全体を一つとしてではなく、配列の要素を一つひとつ取り出して展開し、databaseKeys という親配列の中に挿入
+                ...coordinateKeys // スプレッド構文で coordinateKeys の要素を展開し、正しい列順で配列に結合
+                ]; 
+                // databaseTabletと確定したキーの配列を headerKeys 引数として渡し、コピー関数を実行
+                copyTableDataToClipboard(databaseTable, databaseKeys);
+        });
+
+
+        // 貼り付けボタンへのイベントリスナー設定-----------------------------------------------------------
+        // #pasteDatabaseBtn が押されたときに #databaseTable へ貼り付ける処理
+        pasteDatabaseBtn.addEventListener('click', () => {
+            // ターゲットテーブルは databaseTable、テンプレートは datatableRowTemplate
+            pasteDataFromClipboard(document.getElementById('databaseTable'), datatableRowTemplate);
+        });
+
+        
+        // 【データベース保存ボタンのクリックイベントリスナー】-------------------------------------------------
+        // saveDatabaseBtnがクリックされたら、データベースの保存処理を実行
+        saveDatabaseBtn.addEventListener('click', () => {
+            // 作った保存関数を呼び出す
+            saveCurrentDatabaseData();
+            // 保存が完了したことをユーザーにフィードバックする（任意）
+            alert('データベースが保存されました。');
+        });
+        
+        
+        // 印刷ボタンへのイベントリスナー設定-------------------------------------------------------------
+        printBtn.addEventListener('click', () => {
+            printCanvasAndTables();
+        });
+
+        //印刷設定データテーブルの行追加ボタンの処理--------------------------------------------------------
+        // addPrintSettingRowBtn のクリックイベントリスナー
+        addPrintSettingRowBtn.addEventListener('click', () => {
+
+            //印刷設定データテーブルのtbodyを取得
+            const printSettingDataTbody = printSettingDataTable.querySelector('tbody');
+
+            //作った印刷設定データテーブル専用の行追加の関数を使う
+            const newRow = addPrintSettingRowFromTemplate();
+
+            //作った行を取得したprintSettingDataTableのtbodyに追加
+            printSettingDataTbody.appendChild(newRow);
+        });
+
+        //印刷データテーブルの選択行削除ボタンの処理--------------------------------------------------------
+        // deletePrintSettingRowBtn のクリックイベントリスナー
+        deletePrintSettingRowBtn.addEventListener('click', () => {
+            //削除する対象のテーブルであるprintSettingDataTableのtbodyを取得
+            const printSettingDataTbody = printSettingDataTable.querySelector('tbody');
+            
+            //★選択行削除の関数は印刷データテーブルにも使えたので使う
+            // 引数は 'printSettingDataTbody' 
+            deleteSelectedRowsFromTable(printSettingDataTbody); 
+
+        });
+
+        //印刷設定データテーブルの保存ボタンの処理--------------------------------------------------------
+        // savePrintSettingBtn のクリックイベントリスナー
+        savePrintSettingBtn.addEventListener('click', () => {
+
+            //作った印刷設定データテーブル専用のデータ保存の関数を使う
+            savePrintSetting();
+        });
+        
+        //印刷データテーブルのコピーボタンの処理--------------------------------------------------------
+        // copyPrintSettingBtn のクリックイベントリスナー
+        copyPrintSettingBtn.addEventListener('click', () => {
+
+            // 作った印刷データテーブルのデータをクリップボードにコピーする関数を実行。
+            //今回の場合は専用の関数として作っていることもあり、引数なしでできるように、
+            // テーブルの指定とテンプレートからの行取得も関数内で行うようにした。
+            copyPrintSettingDataToClipboard();
+
+        });
+        //pastePrintSettingBtn
+
+        //印刷データテーブルの貼り付けボタンの処理--------------------------------------------------------
+        // pastePrintSettingBtn のクリックイベントリスナー
+        pastePrintSettingBtn.addEventListener('click', () => {
+
+            // 作った印刷データテーブルにクリップボードのデータを貼り付ける関数を実行。
+            //今回の場合は専用の関数として作っていることもあり、引数なしでできるように、
+            // テーブルの指定とキーの設定も関数内で行うようにした。
+            pastePrintSettingDataFromClipboard();
+
+        });
+
+
+        //設定適応印刷ボタンの処理--------------------------------------------------------
+        // printScaleBtn のクリックイベントリスナー
+        printScaleBtn.addEventListener('click', () => {
+
+            alert('設定適応印刷開始');
+
+            //作った関数を呼び出す
+            // 抽出データテーブルの座標を一時的にスケーリングし、印刷画面を表示し、印刷後に元に戻す関数
+            printExtractedDataByScaling();
+
+        });
+
+
+        //★★★アプリケーション起動時に一度だけ実行したい処理★★★-----------------------------------------------
+        //このコードの役割は、「手動での座標の数値入力」に対応すること
+        // -----------------------------------------------------
+        // 【新規追加】座標入力フィールドの変更を検知し、確定線全体を再描画する
+        // -----------------------------------------------------
+        //作ったロード関数を呼び出して、保存データをロード
+        loadDatabaseData();
+
+        // 入力行にある全ての座標入力欄をリストとして取得
+        const allCoordInputs = document.querySelectorAll('#inputdataTable .coord-input');
+        // 各座標入力欄に 'input' イベントリスナーを追加
+        //取得したNodeList（allCoordInputs）に含まれる各要素（この場合、個々の座標入力欄）に対して、
+        // 1回ずつ処理（関数）を実行するループ処理
+        allCoordInputs.forEach(coordInput => {
+            
+            //取得した全ての.coord-inputの各要素で'input'を検知した時、 redrawAllConfirmedLines();を実行
+            coordInput.addEventListener('input', () => {
+                // 座標値が変更されるたびに、確定線を再描画
+                //ユーザーが値を入力する（キーボードで打つ、コピペする、
+                // マウスホイールで数値を変更するなど）たびに、
+                // 中の関数を実行するように設定
+                redrawAllConfirmedLines();
+            });
+        });
+        // -----------------------------------------------------
+
+        // -----------------------------------------------------
+        // 【追加】描画設定フィールドの変更を検知し、確定線全体を再描画する
+        // -----------------------------------------------------
+        // 入力行にある線種 (.line-style)、太さ (.line-width)、色の要素 (.line-color) を取得
+        const settingInputs = document.querySelectorAll('#inputdataTable .line-style, #inputdataTable .line-width, #inputdataTable .line-color');
+        
+        settingInputs.forEach(input => {
+            // input イベントは、テキスト入力、数値変更、カラーピッカーなど、ほとんどの変更に対応します。
+            input.addEventListener('input', () => { 
+                // 設定値が変更されるたびに、確定線を再描画
+                redrawAllConfirmedLines();
+            });
+        });
+        // -----------------------------------------------------
+        
+        // ★印刷設定データテーブルの初期ロード処理----------------------------------------
+        loadPrintSetting(); 
+        // アプリケーション起動時に自動でロードする場合、このリスナーを追加します。
+
+
+    });
+</script>
