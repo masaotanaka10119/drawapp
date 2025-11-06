@@ -2328,288 +2328,30 @@
             if (lineData.style === '点線') 
             { 
                 // HTMLで定義されている '点線' に合わせて描画を設定
-                ctx.setLineDash([2, 4]); // 2pxの線、4pxの隙間
-                } else {
-                    // '実線' の場合
-                    ctx.setLineDash([]);
-                }
-                // 2. 描画
-                ctx.beginPath();
-                //始点に移動 (一つ前の確定座標)
-                ctx.moveTo(tempLineStartPoint.x, tempLineStartPoint.y);
-                //終点まで線を引く (現在のマウス座標)
-                ctx.lineTo(tempLineCurrentPoint.x, tempLineCurrentPoint.y);
-                ctx.stroke();
-                ctx.setLineDash([]); // 描画後は次の処理のために実線に戻す
-        }
-
-
-        //画像データ描画のイベントリスナー---------------------------------------------------------
-        // 2D描画コンテキストを取得
-        //JavaScriptでcanvas.getContext('2d')と記述することで、
-        // 2Dグラフィックスを描画するための道具一式（メソッドやプロパティ）が詰まったオブジェクトを取得できる
-        
-        //eventはchange イベント　に関するすべての情報
-        //<input type="file">で画像ファイルを選択すると、changeイベントが発生します。
-        //このイベントが発生したときに、｛｝で囲まれたブロック内のコードが実行される
-        imageUpload.addEventListener('change', (event) => {
-
-            //選択されたファイルの情報（ファイル名、サイズなど）を取得し、file変数に格納
-            //選択されたファイルは必ずfiles配列の[0]番目に入っているので、0にしている
-            const file = event.target.files[0];
-            if (file) {
-                //入力行のデータをデータベースに登録する際に、書類名のセルに画像ファイル名を
-                // 入力するために宣言したグローバル変数にファイル名を格納し、保持する。
-                // ファイル名を取得し、格納する時点で拡張子を削除する処理を適用
-                // \.[^/.]+$/ : 末尾にある拡張子 (.xxx) の部分を指します
-                //.replace(A, B)は文字列内のパターン A に一致する部分を、文字列 B に置き換える
-                ///\.[^/.]+$/ という正規表現をAにして削除したい拡張子のパターンを指定
-                //Bを""として空文字にしてパターンに一致した部分を何も含まない文字列に置き換える（＝削除する）
-                currentFileName = file.name.replace(/\.[^/.]+$/, "");
-                //書類名のセルの要素を取得
-                const docNameInput = document.getElementById('documentNameInput');
-                //取得した要素があるかをチェック
-                if(docNameInput) { 
-                    //要素の値に拡張子を削除したファイル名を設定
-                    docNameInput.value = currentFileName; 
-                }
-                
-                //FileReaderはファイルの内容をブラウザのメモリに読み込んで、JavaScriptで扱えるようにするためのもの
-                const reader = new FileReader();
-
-                //非同期処理onLoadイベントハンドラを登録する（「ファイルの読み込みが終わったらこの｛｝内の処理を実行してね」と宣言)
-                //この e オブジェクトは、FileReaderがファイルの読み込みを終えたという「onload イベント」に関する情報
-                reader.onload = (e) => {
-
-                    //画像を一時的に格納するための空のオブジェクトを作成する命令
-                    const img = new Image();
-                    img.onload = () => {
-
-                        // 現在の画像オブジェクトを変数に格納し保持
-                        currentImage = img; 
-
-                        //キャンバスの内部的なサイズを、読み込んだ画像の元のサイズに合わせる。
-                        imageCanvas.width = img.naturalWidth;
-                        imageCanvas.height = img.naturalHeight;
-                        
-                        // Canvas全体をクリア
-                        ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
-                        
-                        //drawImageメソッドを使い、メモリに読み込んだ画像オブジェクトimgを、
-                        //キャンバスの左上（0, 0）を始点として描画
-                        ctx.drawImage(img, 0, 0);
-
-                        // 抽出データと入力行の確定線を再描画
-                        redrawAllConfirmedLines(); 
-                    };
-                    // .resultでe.target（FileReaderオブジェクト）の中にある、読み込みの結果である画像データ（Base64形式の文字列)を取得する。
-                    img.src = e.target.result;
-                };
-                //ファイルの読み込みを開始する
-                reader.readAsDataURL(file);
+                // 2pxの線、4pxの隙間
+                ctx.setLineDash([2, 4]); 
             } else {
-                // ファイルが選択されていない場合、キャンバスをクリア
-                ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+                // '実線' の場合
+                ctx.setLineDash([]);
             }
-        });
+            // 2. 描画
+            ctx.beginPath();
+            //始点に移動 (一つ前の確定座標)
+            ctx.moveTo(tempLineStartPoint.x, tempLineStartPoint.y);
+            //終点まで線を引く (現在のマウス座標)
+            ctx.lineTo(tempLineCurrentPoint.x, tempLineCurrentPoint.y);
+            ctx.stroke();
+            // 描画後は次の処理のために実線に戻す
+            ctx.setLineDash([]); 
+        }
         
-        
-        //画像コンテナ上のマウスダウンのイベントリスナー------------------------------------------------------
-        //【線描画の開始準備（座標の記録のみ）】
-        // 役割: マウスボタンが押された瞬間を検知し、線の描画を開始するための準備（フラグ設定と始点座標の記録）を行う。
-        // ※ この処理では、まだCanvas上に**線は描画されない**。実際の描画は後続の mousemove および mouseup 処理で行われる。
-        imageCanvas.addEventListener('mousedown', e => {
 
-            // 描画の前に、画像オブジェクトがロード済みであることを確認
-            if (currentImage) {
-                
-                //ユーザーが線ではなく「文字」を Canvas に描画しようとしているかを判断するために、
-                // イベントハンドラ内で、一時的に文字データを格納するローカル変数textValue を宣言・初期化
-                let textValue = '';
-
-                // Canvasの表示サイズに合わせて、クリックされた位置を内部描画座標に変換
-                // ★[自作関数] getScaledCoords関数で補正後の統一された座標を取得し、変数 coords に格納
-                const coords = getScaledCoords(e, imageCanvas);
-                
-                // ★描画状態のフラグを設定：ドラッグ操作が開始されたことを示す
-                isDrawing = true;
-                
-                // ★仮線の始点を記録：マウスを押した瞬間の座標を固定
-                // 取得した coords を、始点座標として記録する
-                tempLineStartPoint = coords; 
-                
-                // ★仮線の現在点も始点と同じ位置で初期化：線がまだ引かれていない状態
-                // 始点と同じ座標で現在点も初期化する
-                tempLineCurrentPoint = coords;
-                
-                // ★★★ 修正点B: lineDataForTemp の初期化を追加 ★★★
-                const inputRow = document.querySelector('#inputdataTable tbody tr');
-                if (inputRow) {
-                    // 文字入力セルの値を取得し、textValue に格納（ここで値を設定！）
-                    const textInput = inputRow.querySelector('.text-input');
-                    textValue = textInput ? textInput.value.trim() : '';
-                    
-                    // lineDataForTemp を最新の設定で初期化（mousemove で使用する）
-                    lineDataForTemp = {
-                        color: inputRow.querySelector('.line-color').value,
-                        // parseFloat が失敗した場合に備えてデフォルト値 (1) を設定
-                        width: parseFloat(inputRow.querySelector('.line-width').value) || 1, 
-                        style: inputRow.querySelector('.line-style').value,
-                        text: textValue, // 文字の有無を保持
-                        points: [] 
-                    };
-                }
-
-                // --- 【★追加するロジック】: 最初の座標を即座にセルに書き込む ---
-                const currentCoordInputs = document.querySelectorAll('#inputdataTable .coord-input');
-                // 値が入力されていない（空の）入力欄だけを抽出
-                const emptyInputs = Array.from(currentCoordInputs).filter(input => !input.value); 
-                
-                // 文字入力がなく、空のセルが4つ以上あり、かつそれが x1 から始まる場合にのみ値を設定する
-                // ★修正点D: 文字入力がない (textValue === '') かつ、線入力の条件を満たす場合のみX1, Y1を入力
-                if (textValue === '' && emptyInputs.length >= 4 && emptyInputs[0].dataset.coord === 'x1') { 
-                    
-                    // x1 に始点の X 座標を書き込む
-                    emptyInputs[0].value = coords.x;
-                    // y1 に始点の Y 座標を書き込む
-                    emptyInputs[1].value = coords.y;
-                    
-                    // 'input' イベントを強制的に発火させる
-                    // → これにより、redrawAllConfirmedLines() が即座に呼び出され、
-                    //    画像に x1, y1 から始まる線が再描画されます。
-                    emptyInputs[0].dispatchEvent(new Event('input'));
-                }
-                // -------------------------------------------------------------
-
-            }
-        });
-
-
-        //マウスリーブのイベントリスナー----------------------------------------------------------------
-        //★データベースに登録の際にプレスホルダーの値も入力されて困ったため---------------
-        // 画像の外に出たらプレースホルダーをクリア
-        imageCanvas.addEventListener('mouseleave', () => {
-            // マウスが画像エリアから離れたときにも、最新の要素リストを取得してクリアする
-            const currentCoordInputs = document.querySelectorAll('#inputdataTable .coord-input');
-            currentCoordInputs.forEach(input => {
-                input.placeholder = '';
-            });
-        });
-
-        
-        //画像コンテナ上のマウスムーブのイベントリスナー--------------------------------------------------
-        //【入力コンテナ上のマウスムーブの座標表示 + 仮線の描画】
-        // 役割: 
-        // 1. 未入力セルへの座標プレビュー表示
-        // 2. マウスドラッグ中 (isDrawing=true) に、始点から現在点までの「仮線」を描画する
-        imageCanvas.addEventListener('mousemove', e => {
-            
-            // 既存のgetScaledCoords関数を使って補正後の統一された座標を取得する。（プレビューと描画の両方で使用）
-            const coords = getScaledCoords(e, imageCanvas);
-            
-            // 描画の前に、画像がロード済みであることを確認
-            //（現在ドラッグ中である）のブロックの中に閉じ込めてドラッグ中以外はCanvasの
-            // クリアと再描画は一切行われないようにする
-            if (currentImage) { // ★修正点A: 描画処理全体をこの if の中に閉じ込めます。
-            
-                // --- 【★★★ 描画中の仮線処理 (isDrawing = trueの場合のみ実行) ★★★】 ---
-                if (isDrawing) { // ★このブロックの外では、クリアも再描画も行われません！(チラつき解消)
-
-
-                    // ★★★ ここにデバッグ用コードを追加 ★★★
-                    console.log('ドラッグ中:', coords.x, coords.y);
-                    console.log('始点:', tempLineStartPoint.x, tempLineStartPoint.y);
-
-                    // 1. 仮線の現在点を、最新のマウス座標に更新
-                    tempLineCurrentPoint = coords;
-                    
-                    // 2. Canvasをクリアして再描画
-                    ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
-                    ctx.drawImage(currentImage, 0, 0);
-                    
-                    // 3. 確定済みの線データと入力中の線データがあれば再描画
-
-                    //抽出テーブルの線のデータ
-                    const extractedLinesData = getDrawingDataFromTable(document.getElementById('extracteddataTable')); 
-                    
-                    // ★修正点B: 現在入力中の行の線データも取得 (ドラッグ中に線が表示されるようにする)
-                    const inputLineData = getDrawingDataFromTable(document.getElementById('inputdataTable'));
-                    
-                    // 確定線と入力中のデータを結合して描画用の配列に格納
-                    const allDrawingData = extractedLinesData.concat(inputLineData);
-
-                    // 確定線と入力中の線を結合して描画
-                    drawLinesOnCanvas(extractedLinesData.concat(inputLineData), ctx);
-                    // ★★★ 修正点A: 確定済みの文字も描画する処理を追加 ★★★
-                    drawTextOnCanvas(allDrawingData, ctx); 
-                    
-                    // 4. 仮線 (tempLineStartPoint から tempLineCurrentPoint まで) を描画
-                    const inputRow = document.querySelector('#inputdataTable tbody tr');
-                    
-                    if (inputRow) {
-                        // 【A. 入力行から文字データと設定を取得】
-                        const textInput = inputRow.querySelector('.text-input');
-
-                        //効率的なデータの有無のチェック：三項演算子
-                        //コードの中で「もしあればそれを使って、なければこれを使いなさい」という
-                        //判断をするときに、if...else文よりも簡潔に書く方法
-                        //条件 ? 条件が真（true）の場合の値 : 条件が偽（false）の場合の値;
-                        const textValue = textInput ? textInput.value.trim() : '';
-                        
-                        // 文字サイズと色の設定も取得
-                        const fontSizeInput = inputRow.querySelector('.font-size');
-                        const fontSizeValue = parseFloat(fontSizeInput ? fontSizeInput.value : '12') || 12;
-                        const colorElement = inputRow.querySelector('.line-color');
-                        const colorValue = colorElement ? colorElement.value : '#000000'; 
-                        
-                        // 【B. 描画の分岐】---
-                        // ★文字プレビューを描画 (textValue が空でない場合)
-                        if (textValue !== '') {
-                            ctx.fillStyle = colorValue; 
-                            ctx.font = `${fontSizeValue}px Arial`; 
-                            
-                            // tempLineCurrentPoint (現在のマウス座標) を描画位置として使用
-                            ctx.fillText(textValue, tempLineCurrentPoint.x, tempLineCurrentPoint.y);
-                        
-                        } else if (tempLineStartPoint) { 
-                            // ★線プレビューを描画（textValue が空で、かつ線の始点がある場合）
-                            // drawTemporaryLineToMouse の呼び出し（既存のまま）
-                            // ※ lineDataForTemp は既存のコードで定義されている前提です
-                            drawTemporaryLineToMouse(ctx, lineDataForTemp);
-
-
-                        }
-                    }
-                }
-                // --- 【★★★ ここまで仮線処理 ★★★】 ---
-            } 
-            
-            //【入力コンテナ上のマウスムーブの座標表示】
-            //入力テーブルの.coord-input要素のリストを取得
-            const currentCoordInputs = document.querySelectorAll('#inputdataTable .coord-input');
-            //Array.from().filter() による空の入力欄の抽出
-            //取得した全座標入力欄の中から、値が入力されていない（空の）入力欄だけを絞り込む処理
-            //document.querySelectorAll() が返すNodeListはそのままでは配列の便利な機能(filter, map など)を
-            //使えないため、Array.from(currentCoordInputs)により、currentCoordInputsを標準のJavaScript配列に変換し、
-            //.filter(input => !input.value)で配列の各要素に対してテスト(条件式)を実行し、
-            // テストに合格した要素だけを集めて新しい配列を作る
-            //条件は空文字列 ("") の場合、JavaScriptでは false と判定されるので、それを利用し、
-            //!input.valueとして、空、つまりfalseの時！をつけてtrueにして配列を作る処理をするようにする
-            const emptyInputs = Array.from(currentCoordInputs).filter(input => !input.value); 
-            
-            if (emptyInputs.length > 0 && emptyInputs[0].dataset.coord.startsWith('x') && emptyInputs.length % 2 === 0) {
-                emptyInputs[0].placeholder = coords.x;
-                emptyInputs[1].placeholder = coords.y;
-            }
-            
-        });
-
-        
-        //画像コンテナ上のマウスアップのイベントリスナー------------------------------------------------
-        //【線描画の確定と座標の入力】
+        //【線描画の確定と座標の入力】の 共通処理関数を定義-----------------------------------------
+        //マウスアップのイベントリスナーに合った処理を関数化した
         // 役割: マウスボタンが離された瞬間を検知し、ドラッグで引かれた仮線を確定させ、
         //       その始点と終点の座標を、入力テーブルの空いているセルに入力する。
-        imageCanvas.addEventListener('mouseup', e => {
+        const handlePointerUpOrCancel = e => {
+            
             // 描画中ではない、または画像がロードされていない場合は何もしない
             if (!isDrawing || !currentImage) return; 
 
@@ -2755,6 +2497,302 @@
             //現在のドラッグ操作が完了したため、線の終点として使われたこの座標をリセットし、次のドラッグ操作に備えるため
             //tempLineCurrentPoint = null; だけは、if/else の外で実行
             tempLineCurrentPoint = null;
+        
+        }
+
+
+        //画像データ描画のイベントリスナー---------------------------------------------------------
+        // 2D描画コンテキストを取得
+        //JavaScriptでcanvas.getContext('2d')と記述することで、
+        // 2Dグラフィックスを描画するための道具一式（メソッドやプロパティ）が詰まったオブジェクトを取得できる
+        
+        //eventはchange イベント　に関するすべての情報
+        //<input type="file">で画像ファイルを選択すると、changeイベントが発生します。
+        //このイベントが発生したときに、｛｝で囲まれたブロック内のコードが実行される
+        imageUpload.addEventListener('change', (event) => {
+
+            //選択されたファイルの情報（ファイル名、サイズなど）を取得し、file変数に格納
+            //選択されたファイルは必ずfiles配列の[0]番目に入っているので、0にしている
+            const file = event.target.files[0];
+            if (file) {
+                //入力行のデータをデータベースに登録する際に、書類名のセルに画像ファイル名を
+                // 入力するために宣言したグローバル変数にファイル名を格納し、保持する。
+                // ファイル名を取得し、格納する時点で拡張子を削除する処理を適用
+                // \.[^/.]+$/ : 末尾にある拡張子 (.xxx) の部分を指します
+                //.replace(A, B)は文字列内のパターン A に一致する部分を、文字列 B に置き換える
+                ///\.[^/.]+$/ という正規表現をAにして削除したい拡張子のパターンを指定
+                //Bを""として空文字にしてパターンに一致した部分を何も含まない文字列に置き換える（＝削除する）
+                currentFileName = file.name.replace(/\.[^/.]+$/, "");
+                //書類名のセルの要素を取得
+                const docNameInput = document.getElementById('documentNameInput');
+                //取得した要素があるかをチェック
+                if(docNameInput) { 
+                    //要素の値に拡張子を削除したファイル名を設定
+                    docNameInput.value = currentFileName; 
+                }
+                
+                //FileReaderはファイルの内容をブラウザのメモリに読み込んで、JavaScriptで扱えるようにするためのもの
+                const reader = new FileReader();
+
+                //非同期処理onLoadイベントハンドラを登録する（「ファイルの読み込みが終わったらこの｛｝内の処理を実行してね」と宣言)
+                //この e オブジェクトは、FileReaderがファイルの読み込みを終えたという「onload イベント」に関する情報
+                reader.onload = (e) => {
+
+                    //画像を一時的に格納するための空のオブジェクトを作成する命令
+                    const img = new Image();
+                    img.onload = () => {
+
+                        // 現在の画像オブジェクトを変数に格納し保持
+                        currentImage = img; 
+
+                        //キャンバスの内部的なサイズを、読み込んだ画像の元のサイズに合わせる。
+                        imageCanvas.width = img.naturalWidth;
+                        imageCanvas.height = img.naturalHeight;
+                        
+                        // Canvas全体をクリア
+                        ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+                        
+                        //drawImageメソッドを使い、メモリに読み込んだ画像オブジェクトimgを、
+                        //キャンバスの左上（0, 0）を始点として描画
+                        ctx.drawImage(img, 0, 0);
+
+                        // 抽出データと入力行の確定線を再描画
+                        redrawAllConfirmedLines(); 
+                    };
+                    // .resultでe.target（FileReaderオブジェクト）の中にある、読み込みの結果である画像データ（Base64形式の文字列)を取得する。
+                    img.src = e.target.result;
+                };
+                //ファイルの読み込みを開始する
+                reader.readAsDataURL(file);
+            } else {
+                // ファイルが選択されていない場合、キャンバスをクリア
+                ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+            }
+        });
+        
+        
+        //画像コンテナ上のマウスダウンのイベントリスナー------------------------------------------------------
+        //【線描画の開始準備（座標の記録のみ）】
+        // 役割: マウスボタンが押された瞬間を検知し、線の描画を開始するための準備（フラグ設定と始点座標の記録）を行う。
+        // ※ この処理では、まだCanvas上に**線は描画されない**。実際の描画は後続の mousemove および mouseup 処理で行われる。
+        imageCanvas.addEventListener('pointerdown', e => {
+
+            // 描画の前に、画像オブジェクトがロード済みであることを確認
+            if (currentImage) {
+                
+                //ユーザーが線ではなく「文字」を Canvas に描画しようとしているかを判断するために、
+                // イベントハンドラ内で、一時的に文字データを格納するローカル変数textValue を宣言・初期化
+                let textValue = '';
+
+                // Canvasの表示サイズに合わせて、クリックされた位置を内部描画座標に変換
+                // ★[自作関数] getScaledCoords関数で補正後の統一された座標を取得し、変数 coords に格納
+                const coords = getScaledCoords(e, imageCanvas);
+                
+                // ★描画状態のフラグを設定：ドラッグ操作が開始されたことを示す
+                isDrawing = true;
+                
+                // ★仮線の始点を記録：マウスを押した瞬間の座標を固定
+                // 取得した coords を、始点座標として記録する
+                tempLineStartPoint = coords; 
+                
+                // ★仮線の現在点も始点と同じ位置で初期化：線がまだ引かれていない状態
+                // 始点と同じ座標で現在点も初期化する
+                tempLineCurrentPoint = coords;
+                
+                // ★★★ 修正点B: lineDataForTemp の初期化を追加 ★★★
+                const inputRow = document.querySelector('#inputdataTable tbody tr');
+                if (inputRow) {
+                    // 文字入力セルの値を取得し、textValue に格納（ここで値を設定！）
+                    const textInput = inputRow.querySelector('.text-input');
+                    textValue = textInput ? textInput.value.trim() : '';
+                    
+                    // lineDataForTemp を最新の設定で初期化（mousemove で使用する）
+                    lineDataForTemp = {
+                        color: inputRow.querySelector('.line-color').value,
+                        // parseFloat が失敗した場合に備えてデフォルト値 (1) を設定
+                        width: parseFloat(inputRow.querySelector('.line-width').value) || 1, 
+                        style: inputRow.querySelector('.line-style').value,
+                        text: textValue, // 文字の有無を保持
+                        points: [] 
+                    };
+                }
+
+                // --- 【★追加するロジック】: 最初の座標を即座にセルに書き込む ---
+                const currentCoordInputs = document.querySelectorAll('#inputdataTable .coord-input');
+                // 値が入力されていない（空の）入力欄だけを抽出
+                const emptyInputs = Array.from(currentCoordInputs).filter(input => !input.value); 
+                
+                // 文字入力がなく、空のセルが4つ以上あり、かつそれが x1 から始まる場合にのみ値を設定する
+                // ★修正点D: 文字入力がない (textValue === '') かつ、線入力の条件を満たす場合のみX1, Y1を入力
+                if (textValue === '' && emptyInputs.length >= 4 && emptyInputs[0].dataset.coord === 'x1') { 
+                    
+                    // x1 に始点の X 座標を書き込む
+                    emptyInputs[0].value = coords.x;
+                    // y1 に始点の Y 座標を書き込む
+                    emptyInputs[1].value = coords.y;
+                    
+                    // 'input' イベントを強制的に発火させる
+                    // → これにより、redrawAllConfirmedLines() が即座に呼び出され、
+                    //    画像に x1, y1 から始まる線が再描画されます。
+                    emptyInputs[0].dispatchEvent(new Event('input'));
+                }
+                // -------------------------------------------------------------
+
+            }
+        });
+
+
+        //マウスリーブのイベントリスナー----------------------------------------------------------------
+        //★データベースに登録の際にプレスホルダーの値も入力されて困ったため---------------
+        // 画像の外に出たらプレースホルダーをクリア
+        imageCanvas.addEventListener('pointerleave', () => {
+            // マウスが画像エリアから離れたときにも、最新の要素リストを取得してクリアする
+            const currentCoordInputs = document.querySelectorAll('#inputdataTable .coord-input');
+            currentCoordInputs.forEach(input => {
+                input.placeholder = '';
+            });
+            
+            // ★追加: ドラッグ中であれば処理を中断 (pointerupと同様の処理を一部適用)
+            // ★追加理由: ドラッグ中にCanvas領域外に出た場合、pointerupが発生しないため、
+            // 描画状態（isDrawing）がtrueのまま残り、仮線が残留するバグを防ぐためにリセット処理を行う。
+            if (isDrawing) {
+                // ドラッグを終了（フラグをリセット）
+                isDrawing = false;
+                // 仮線の座標をリセット
+                tempLineStartPoint = null;
+                tempLineCurrentPoint = null;
+                // Canvasを再描画して仮線を消す (確定前の仮線を消す)
+                redrawAllConfirmedLines(); 
+            }
+        });
+
+        
+        //画像コンテナ上のマウスムーブのイベントリスナー--------------------------------------------------
+        //【入力コンテナ上のマウスムーブの座標表示 + 仮線の描画】
+        // 役割: 
+        // 1. 未入力セルへの座標プレビュー表示
+        // 2. マウスドラッグ中 (isDrawing=true) に、始点から現在点までの「仮線」を描画する
+        imageCanvas.addEventListener('pointermove', e => {
+            
+            // 既存のgetScaledCoords関数を使って補正後の統一された座標を取得する。（プレビューと描画の両方で使用）
+            const coords = getScaledCoords(e, imageCanvas);
+            
+            // 描画の前に、画像がロード済みであることを確認
+            //（現在ドラッグ中である）のブロックの中に閉じ込めてドラッグ中以外はCanvasの
+            // クリアと再描画は一切行われないようにする
+            if (currentImage) { // ★修正点A: 描画処理全体をこの if の中に閉じ込めます。
+            
+                // --- 【★★★ 描画中の仮線処理 (isDrawing = trueの場合のみ実行) ★★★】 ---
+                if (isDrawing) { // ★このブロックの外では、クリアも再描画も行われません！(チラつき解消)
+
+
+                    // ★★★ ここにデバッグ用コードを追加 ★★★
+                    console.log('ドラッグ中:', coords.x, coords.y);
+                    console.log('始点:', tempLineStartPoint.x, tempLineStartPoint.y);
+
+                    // 1. 仮線の現在点を、最新のマウス座標に更新
+                    tempLineCurrentPoint = coords;
+                    
+                    // 2. Canvasをクリアして再描画
+                    ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+                    ctx.drawImage(currentImage, 0, 0);
+                    
+                    // 3. 確定済みの線データと入力中の線データがあれば再描画
+
+                    //抽出テーブルの線のデータ
+                    const extractedLinesData = getDrawingDataFromTable(document.getElementById('extracteddataTable')); 
+                    
+                    // ★修正点B: 現在入力中の行の線データも取得 (ドラッグ中に線が表示されるようにする)
+                    const inputLineData = getDrawingDataFromTable(document.getElementById('inputdataTable'));
+                    
+                    // 確定線と入力中のデータを結合して描画用の配列に格納
+                    const allDrawingData = extractedLinesData.concat(inputLineData);
+
+                    // 確定線と入力中の線を結合して描画
+                    drawLinesOnCanvas(extractedLinesData.concat(inputLineData), ctx);
+                    // ★★★ 修正点A: 確定済みの文字も描画する処理を追加 ★★★
+                    drawTextOnCanvas(allDrawingData, ctx); 
+                    
+                    // 4. 仮線 (tempLineStartPoint から tempLineCurrentPoint まで) を描画
+                    const inputRow = document.querySelector('#inputdataTable tbody tr');
+                    
+                    if (inputRow) {
+                        // 【A. 入力行から文字データと設定を取得】
+                        const textInput = inputRow.querySelector('.text-input');
+
+                        //効率的なデータの有無のチェック：三項演算子
+                        //コードの中で「もしあればそれを使って、なければこれを使いなさい」という
+                        //判断をするときに、if...else文よりも簡潔に書く方法
+                        //条件 ? 条件が真（true）の場合の値 : 条件が偽（false）の場合の値;
+                        const textValue = textInput ? textInput.value.trim() : '';
+                        
+                        // 文字サイズと色の設定も取得
+                        const fontSizeInput = inputRow.querySelector('.font-size');
+                        const fontSizeValue = parseFloat(fontSizeInput ? fontSizeInput.value : '12') || 12;
+                        const colorElement = inputRow.querySelector('.line-color');
+                        const colorValue = colorElement ? colorElement.value : '#000000'; 
+                        
+                        // 【B. 描画の分岐】---
+                        // ★文字プレビューを描画 (textValue が空でない場合)
+                        if (textValue !== '') {
+                            ctx.fillStyle = colorValue; 
+                            ctx.font = `${fontSizeValue}px Arial`; 
+                            
+                            // tempLineCurrentPoint (現在のマウス座標) を描画位置として使用
+                            ctx.fillText(textValue, tempLineCurrentPoint.x, tempLineCurrentPoint.y);
+                        
+                        } else if (tempLineStartPoint) { 
+                            // ★線プレビューを描画（textValue が空で、かつ線の始点がある場合）
+                            // drawTemporaryLineToMouse の呼び出し（既存のまま）
+                            // ※ lineDataForTemp は既存のコードで定義されている前提です
+                            drawTemporaryLineToMouse(ctx, lineDataForTemp);
+
+
+                        }
+                    }
+                }
+                // --- 【★★★ ここまで仮線処理 ★★★】 ---
+            } 
+            
+            //【入力コンテナ上のマウスムーブの座標表示】
+            //入力テーブルの.coord-input要素のリストを取得
+            const currentCoordInputs = document.querySelectorAll('#inputdataTable .coord-input');
+            //Array.from().filter() による空の入力欄の抽出
+            //取得した全座標入力欄の中から、値が入力されていない（空の）入力欄だけを絞り込む処理
+            //document.querySelectorAll() が返すNodeListはそのままでは配列の便利な機能(filter, map など)を
+            //使えないため、Array.from(currentCoordInputs)により、currentCoordInputsを標準のJavaScript配列に変換し、
+            //.filter(input => !input.value)で配列の各要素に対してテスト(条件式)を実行し、
+            // テストに合格した要素だけを集めて新しい配列を作る
+            //条件は空文字列 ("") の場合、JavaScriptでは false と判定されるので、それを利用し、
+            //!input.valueとして、空、つまりfalseの時！をつけてtrueにして配列を作る処理をするようにする
+            const emptyInputs = Array.from(currentCoordInputs).filter(input => !input.value); 
+            
+            if (emptyInputs.length > 0 && emptyInputs[0].dataset.coord.startsWith('x') && emptyInputs.length % 2 === 0) {
+                emptyInputs[0].placeholder = coords.x;
+                emptyInputs[1].placeholder = coords.y;
+            }
+            
+        });
+
+        
+        //画像コンテナ上のマウスアップのイベントリスナー------------------------------------------------
+        //【線描画の確定と座標の入力】
+        // 役割: マウスボタンが離された瞬間を検知し、ドラッグで引かれた仮線を確定させ、
+        //       その始点と終点の座標を、入力テーブルの空いているセルに入力する。
+        imageCanvas.addEventListener('pointerup', e => {
+
+            //作った関数を呼び出す
+            handlePointerUpOrCancel();
+
+        });
+
+
+        //ユーザーの意図によらず、ブラウザやOSといったシステム側が、進行中の描画操作を
+        // 強制的に中断（キャンセル）した場合に、アプリケーション側の描画状態を確実にリセットするために追加した。
+        imageCanvas.addEventListener('pointercancel', e => {
+
+            //作った関数を呼び出す
+            handlePointerUpOrCancel();
 
         });
 
@@ -2958,7 +2996,7 @@
             copyPrintSettingDataToClipboard();
 
         });
-        //pastePrintSettingBtn
+        
 
         //印刷データテーブルの貼り付けボタンの処理--------------------------------------------------------
         // pastePrintSettingBtn のクリックイベントリスナー
@@ -3032,6 +3070,4 @@
 
 
     });
-
 </script>
-
