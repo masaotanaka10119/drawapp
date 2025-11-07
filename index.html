@@ -115,6 +115,7 @@
             h2, 
             #image-upload,
             #addRowBtn,
+            #clearInputDataRowBtn,
             #extractionBtn,
             #extractedDataRegisterButton,
             #printBtn,
@@ -338,6 +339,7 @@
 
         <div>
             <button id="addRowBtn">データベースへ追加</button>
+            <button id="clearInputDataRowBtn">入力データのクリア</button>
         </div>
 
         <p> 抽出データ</p>
@@ -511,6 +513,7 @@
         //tbodyを取得、中身はテンプレートと関数で入れる
         const inputdataTableBody = document.querySelector('#inputdataTable tbody');
         const addRowBtn = document.getElementById('addRowBtn');
+        const clearInputDataRowBtn = document.getElementById('clearInputDataRowBtn');
         const extracteddataTableBody = document.querySelector('#extracteddataTable tbody');
         const extractionBtn = document.getElementById('extractionBtn');
         const extractedDataRegisterButton = document.getElementById('extractedDataRegisterButton');
@@ -2845,6 +2848,18 @@
                     }
                 }
             }
+        });
+
+
+        //入力データのクリアボタンのクリックイベントリスナー-------------------------------------------------------
+        //clearInputDataRowBtn がクリックされたら以下の関数を実行
+        clearInputDataRowBtn.addEventListener('click', () => {
+            //現在のinputdataTableの最初の行（tbody内の<tr>）を取得
+            const inputRow = document.querySelector('#inputdataTable tbody tr');
+
+            //データを追加後、入力行をクリアする
+            clearRow(inputRow);
+
         });
 
 
