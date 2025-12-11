@@ -2860,6 +2860,17 @@
             //データを追加後、入力行をクリアする
             clearRow(inputRow);
 
+            // グローバル変数 currentFileName が存在する場合、書類名セルにファイル名を設定する
+            if (currentFileName) {
+                // 書類名 (Document Name) の入力要素を取得
+                const documentNameInput = inputRow.cells[1].querySelector('input');
+                // ユーザーによる手動入力は考慮せず（readonlyのため）、ファイル名を直接設定する
+                // ★readonly かつvalueも空というようにHTMLで設定されてるので、書類名が空かどうかのチェックは不要
+                if (documentNameInput) {
+                    documentNameInput.value = currentFileName;
+                }
+            }
+
         });
 
 
@@ -3085,4 +3096,5 @@
 
 
     });
+
 </script>
